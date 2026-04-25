@@ -61,9 +61,8 @@ function HandlePage() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        const reason =
-          body?.reason || body?.error || `Send failed (status ${res.status}).`
-        setError(String(reason))
+        const reason = String(body?.reason || body?.error || `status ${res.status}`)
+        setError(friendlyPaymentError(reason))
         setSending(false)
         return
       }
@@ -104,6 +103,9 @@ function HandlePage() {
 
   if (step === "compose" && intent) {
     const canSend = isSignedIn && message.trim().length > 0 && !sending
+    const senderShort = evmAddress
+      ? `${evmAddress.slice(0, 6)}…${evmAddress.slice(-4)}`
+      : null
 
     return (
       <main style={pageStyle}>
@@ -142,7 +144,11 @@ function HandlePage() {
           }}
         >
           <span style={{ fontSize: "0.8rem", color: "#999" }}>
-            for @{creator.handle}
+            {isSignedIn && senderShort ? (
+              <>paying from {senderShort} → @{creator.handle}</>
+            ) : (
+              <>for @{creator.handle}</>
+            )}
           </span>
           <span style={{ fontSize: "0.8rem", color: "#999" }}>
             {message.length}/{MAX_MESSAGE_LENGTH}
@@ -314,6 +320,20 @@ const backLinkStyle: React.CSSProperties = {
   color: "#666",
   cursor: "pointer",
   fontSize: "0.9rem",
+}
+
+function friendlyPaymentError(reason: string): string {
+  const r = reason.toLowerCase()
+  if (r.includes("insufficient_balance") || r.includes("insufficient funds")) {
+    return "Not enough USDC in your wallet to pay the toll. Top up at faucet.circle.com (Base Sepolia, USDC) and try again."
+  }
+  if (r.includes("invalid_payment") || r.includes("invalid_signature")) {
+    return "Lumo couldn't verify the payment. Try sending again."
+  }
+  if (r.includes("network") || r.includes("fetch")) {
+    return "Network hiccup. Check your connection and try again."
+  }
+  return `Couldn't send: ${reason}`
 }
 
 export default HandlePage
