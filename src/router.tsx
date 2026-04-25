@@ -6,6 +6,7 @@ import DashboardPage from "./pages/DashboardPage"
 import HandlePage from "./pages/HandlePage"
 import HomePage from "./pages/HomePage"
 import NotFoundPage from "./pages/NotFoundPage"
+import OnboardPage from "./pages/OnboardPage"
 
 export const router = createBrowserRouter([
   {
@@ -14,6 +15,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "onboard", element: <OnboardPage /> },
       { path: "agent", element: <AgentPage /> },
       { path: ":handle", element: <HandlePage /> },
       { path: "*", element: <NotFoundPage /> },
