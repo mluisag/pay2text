@@ -30,5 +30,5 @@ export const CDP_CONFIG = {
   }),
   appName: "CDP React StarterKit",
   appLogoUrl: "http://localhost:3000/logo.svg",
-  authMethods: ["email", "sms", "oauth:google", "oauth:apple"],
+  authMethods: ["email", "sms"],
 } as Config;
