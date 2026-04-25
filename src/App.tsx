@@ -1,28 +1,14 @@
-import { useIsInitialized, useIsSignedIn } from "@coinbase/cdp-hooks";
+import { useIsInitialized } from "@coinbase/cdp-hooks"
+import { Outlet } from "react-router-dom"
 
-import Loading from "./Loading";
-import SignedInScreen from "./SignedInScreen";
-import SignInScreen from "./SignInScreen";
+import Loading from "./Loading"
 
-/**
- * This component how to use the useIsIntialized, useEvmAddress, and useIsSignedIn hooks.
- * It also demonstrates how to use the AuthButton component to sign in and out of the app.
- */
 function App() {
-  const { isInitialized } = useIsInitialized();
-  const { isSignedIn } = useIsSignedIn();
+  const { isInitialized } = useIsInitialized()
 
-  return (
-    <div className="app flex-col-container flex-grow">
-      {!isInitialized && <Loading />}
-      {isInitialized && (
-        <>
-          {!isSignedIn && <SignInScreen />}
-          {isSignedIn && <SignedInScreen />}
-        </>
-      )}
-    </div>
-  );
+  if (!isInitialized) return <Loading />
+
+  return <Outlet />
 }
 
-export default App;
+export default App

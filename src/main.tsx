@@ -1,16 +1,17 @@
 import { CDPReactProvider } from "@coinbase/cdp-react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { RouterProvider } from "react-router-dom";
 
-import App from "./App.tsx";
 import { CDP_CONFIG } from "./config.ts";
+import { router } from "./router.tsx";
 import { theme } from "./theme.ts";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <CDPReactProvider config={CDP_CONFIG} theme={theme}>
-      <App />
+      <RouterProvider router={router} />
     </CDPReactProvider>
   </StrictMode>,
 );
