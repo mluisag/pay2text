@@ -1,39 +1,39 @@
 export type Intent = {
   id: string
   label: string
-  priceUsd: number | null
+  priceUsd: number
   displayPrice: string
 }
 
 export const INTENTS: Intent[] = [
   {
     id: 'just-saying-hi',
-    label: 'Just saying hi',
-    priceUsd: 0.013,
-    displayPrice: '1.3¢',
+    label: 'just saying hi',
+    priceUsd: 0.001,
+    displayPrice: '0.1¢',
   },
   {
-    id: 'want-to-meet',
-    label: 'Want to meet you',
-    priceUsd: 0.13,
-    displayPrice: '13¢',
+    id: 'got-a-minute',
+    label: 'got a minute?',
+    priceUsd: 0.01,
+    displayPrice: '1¢',
   },
   {
-    id: 'pitching',
-    label: 'Pitching you something',
-    priceUsd: 0.13,
-    displayPrice: '13¢',
+    id: 'have-an-idea',
+    label: 'have an idea',
+    priceUsd: 0.10,
+    displayPrice: '10¢',
   },
   {
-    id: 'hoping-reply',
-    label: "Hoping you'll reply",
-    priceUsd: 1.30,
-    displayPrice: '$1.30',
+    id: 'kind-of-important',
+    label: 'kind of important',
+    priceUsd: 1.00,
+    displayPrice: '$1',
   },
   {
-    id: 'something-else',
-    label: 'Something else',
-    priceUsd: null,
-    displayPrice: 'you choose',
+    id: 'i-love-you',
+    label: 'I love you',
+    priceUsd: 10.00,
+    displayPrice: '$10',
   },
 ]
