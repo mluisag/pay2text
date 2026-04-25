@@ -29,3 +29,8 @@ dist-ssr
 
 # Design references (local only)
 design-references/
+
+# One-off admin scripts (kept out of repo to avoid attack surface)
+scripts/
+.vercel
+.env*.local

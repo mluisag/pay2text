@@ -23,7 +23,8 @@
     "react-router-dom": "^7.14.2",
     "resend": "^6.12.2",
     "viem": "^2.47.0",
-    "x402": "^1.2.0"
+    "x402": "^1.2.0",
+    "x402-fetch": "^1.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
