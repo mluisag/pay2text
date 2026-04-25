@@ -325,7 +325,7 @@ const backLinkStyle: React.CSSProperties = {
 function friendlyPaymentError(reason: string): string {
   const r = reason.toLowerCase()
   if (r.includes("insufficient_balance") || r.includes("insufficient funds")) {
-    return "Not enough USDC in your wallet to pay the toll. Top up at faucet.circle.com (Base Sepolia, USDC) and try again."
+    return "Your Lumo wallet needs a little USDC. On testnet: faucet.circle.com (pick Base Sepolia, USDC). Lumo will wait."
   }
   if (r.includes("invalid_payment") || r.includes("invalid_signature")) {
     return "Lumo couldn't verify the payment. Try sending again."

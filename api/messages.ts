@@ -27,8 +27,25 @@ type StoredMessage = {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === 'GET') {
+    try {
+      const handle = typeof req.query.handle === 'string' ? req.query.handle : null
+      if (!handle) return res.status(400).json({ error: 'missing_handle' })
+
+      const items = await redis.lrange(`messages:${handle.toLowerCase()}`, 0, -1)
+      // Upstash sometimes auto-parses JSON, sometimes returns strings. Handle both.
+      const messages = items.map((it) =>
+        typeof it === 'string' ? JSON.parse(it) : it,
+      )
+      return res.status(200).json({ messages })
+    } catch (err) {
+      console.error('messages GET error:', err)
+      return res.status(500).json({ error: 'server_error' })
+    }
+  }
+
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST')
+    res.setHeader('Allow', 'GET, POST')
     return res.status(405).json({ error: 'method_not_allowed' })
   }
 
