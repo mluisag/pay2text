@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { redis, type Creator } from './_lib/redis'
+import { redis, type Creator } from './_lib/redis.js'
 
 const HANDLE_REGEX = /^[a-z0-9]{3,32}$/
 
