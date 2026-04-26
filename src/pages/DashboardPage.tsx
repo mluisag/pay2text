@@ -47,6 +47,7 @@ function DashboardPage() {
     addr.length > 14 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr
 
   const hasRealMessages = messages.length > 0
+  const displayName = deriveDisplayName(creator.email, creator.handle)
 
   return (
     <main
@@ -79,10 +80,10 @@ function DashboardPage() {
                 margin: 0,
               }}
             >
-              Your inbox
+              {displayName}'s inbox
             </h1>
             <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              @{creator.handle}
+              pay2text.xyz/{creator.handle}
             </p>
           </div>
         </div>
@@ -148,11 +149,11 @@ function DashboardPage() {
           </div>
           <p style={{ fontSize: "0.75rem", color: "var(--text-subtle)", margin: 0 }}>
             <a
-              href={`https://sepolia.basescan.org/address/${walletAddress}`}
+              href={`https://sepolia.basescan.org/address/${walletAddress}#tokentxns`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              View on Basescan ↗
+              View live transactions on BaseScan ↗
             </a>
           </p>
         </section>
@@ -274,6 +275,26 @@ function DashboardPage() {
       </section>
     </main>
   )
+}
+
+/**
+ * Derives a friendly display name. Prefers email's local part (the bit
+ * before @), splits on a dot to grab the first segment, and capitalizes
+ * it. Falls back to "@handle" when no email is saved.
+ *
+ *   "mluisa.garduno@gmail.com" -> "Mluisa"
+ *   "raj@example.com"          -> "Raj"
+ *   undefined                  -> "@laluy"
+ */
+function deriveDisplayName(email: string | undefined, handle: string): string {
+  if (email) {
+    const localPart = email.split("@")[0] ?? ""
+    const firstSegment = localPart.split(/[.+_-]/)[0]
+    if (firstSegment) {
+      return firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
+    }
+  }
+  return `@${handle}`
 }
 
 function formatUsd(value: number): string {
