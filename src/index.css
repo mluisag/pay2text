@@ -1,93 +1,158 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Rethink+Sans:ital,wght@0,400..800;1,400..800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap");
+
+/* -------------------------------------------------------------------------
+   Design tokens — pay2text.xyz ("calm against the noise")
+   ------------------------------------------------------------------------- */
 
 :root {
-  --cdp-example-page-bg-color: #eaeaea;
-  --cdp-example-page-bg-alt-color: #eef0f3;
-  --cdp-example-bg-overlay-color: rgba(0, 0, 0, 0.25);
-  --cdp-example-bg-skeleton-color: rgba(0, 0, 0, 0.1);
-  --cdp-example-text-color: #111111;
-  --cdp-example-text-secondary-color: #757575;
-  --cdp-example-accent-color: #008080;
-  --cdp-example-accent-hover-color: #016969;
-  --cdp-example-accent-foreground-color: #ffffff;
-  --cdp-example-bg-low-contrast-color: #eeeeee;
-  --cdp-example-cdp-page-bg-color: #ffffff;
-  --cdp-example-cdp-page-bg-alt-color: #eef0f3;
-  --cdp-example-card-bg-color: #ffffff;
-  --cdp-example-card-border-color: #dcdcdc;
-  --cdp-example-card-max-width: 30rem;
-  --cdp-example-base-font-size: 16px;
-  --cdp-example-font-family: "Rethink Sans", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Surface */
+  --bg: #fbf6f0;
+  --bg-soft: #f8eee3;
+  --card: rgba(255, 252, 247, 0.72);
+  --card-solid: #fffcf7;
+  --line: rgba(31, 27, 22, 0.08);
+  --line-strong: rgba(31, 27, 22, 0.16);
 
-  background-color: var(--cdp-example-page-bg-color);
-  color: var(--cdp-example-card-border-color);
-  color-scheme: light dark;
-  font-family: var(--cdp-example-font-family);
-  font-size: var(--cdp-example-base-font-size);
-  font-synthesis: none;
-  font-weight: 400;
-  line-height: 1.5;
-  text-rendering: optimizeLegibility;
+  /* Type */
+  --text: #1f1b16;
+  --text-muted: #7a7068;
+  --text-subtle: #a59c92;
+
+  /* Accent — warm coral */
+  --accent: #e8775b;
+  --accent-hover: #d35c41;
+  --accent-soft: #fce5dc;
+  --accent-on: #ffffff;
+
+  /* Demo / warning */
+  --warm: #b88800;
+
+  /* Lumo gradient stops */
+  --lumo-stop-1: #fff3d6;
+  --lumo-stop-2: #ffd197;
+  --lumo-stop-3: #ff8a64;
+  --lumo-stop-4: #e8543a;
+  --lumo-glow: rgba(255, 152, 100, 0.45);
+
+  /* Shape */
+  --radius-sm: 0.55rem;
+  --radius: 0.85rem;
+  --radius-lg: 1.25rem;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.05);
+  --shadow: 0 4px 18px rgba(31, 27, 22, 0.06), 0 1px 3px rgba(31, 27, 22, 0.04);
+  --shadow-lg: 0 12px 36px rgba(31, 27, 22, 0.08);
+
+  /* Type system */
+  --font-sans: "Inter Tight", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  color-scheme: light;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --cdp-example-page-bg-color: #0a0b0d;
-    --cdp-example-page-bg-alt-color: #333333;
-    --cdp-example-bg-overlay-color: rgba(0, 0, 0, 0.25);
-    --cdp-example-bg-skeleton-color: rgba(255, 255, 255, 0.1);
-    --cdp-example-text-color: #fafafa;
-    --cdp-example-text-secondary-color: #8a919e;
-    --cdp-example-accent-color: #00adad;
-    --cdp-example-accent-hover-color: #04c0c0;
-    --cdp-example-accent-foreground-color: #0a0b0d;
-    --cdp-example-bg-low-contrast-color: #32353d;
-    --cdp-example-cdp-page-bg-color: #0a0b0d;
-    --cdp-example-cdp-page-bg-alt-color: #333333;
-    --cdp-example-card-bg-color: #141519;
-    --cdp-example-card-border-color: #24262a;
-  }
+/* -------------------------------------------------------------------------
+   CDP component theme bridge — keeps the AuthButton in our palette
+   ------------------------------------------------------------------------- */
+
+:root {
+  --cdp-example-page-bg-color: var(--bg);
+  --cdp-example-page-bg-alt-color: var(--bg-soft);
+  --cdp-example-bg-overlay-color: rgba(31, 27, 22, 0.35);
+  --cdp-example-bg-skeleton-color: rgba(31, 27, 22, 0.08);
+  --cdp-example-text-color: var(--text);
+  --cdp-example-text-secondary-color: var(--text-muted);
+  --cdp-example-accent-color: var(--accent);
+  --cdp-example-accent-hover-color: var(--accent-hover);
+  --cdp-example-accent-foreground-color: var(--accent-on);
+  --cdp-example-bg-low-contrast-color: var(--bg-soft);
+  --cdp-example-cdp-page-bg-color: var(--card-solid);
+  --cdp-example-cdp-page-bg-alt-color: var(--bg-soft);
+  --cdp-example-card-bg-color: var(--card-solid);
+  --cdp-example-card-border-color: var(--line-strong);
+  --cdp-example-card-max-width: 30rem;
+  --cdp-example-base-font-size: 16px;
+  --cdp-example-font-family: var(--font-sans);
 }
 
-::selection {
-  background-color: color(from var(--cdp-example-accent-color) srgb r g b / 0.3);
-}
+/* -------------------------------------------------------------------------
+   Resets & base layout
+   ------------------------------------------------------------------------- */
 
-html,
-html * {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
   min-height: 100vh;
-  min-width: 320px;
 }
 
-body,
-#root,
-#root > div,
-.flex-col-container {
+body {
+  background: var(--bg);
+  color: var(--text);
+  /* Ambient warm light from corners — Lumo's atmosphere */
+  background-image:
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(255, 213, 175, 0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(255, 184, 156, 0.4) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(232, 119, 91, 0.16) 0%, transparent 60%);
+  background-attachment: fixed;
+  background-color: var(--bg);
+}
+
+#root {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  place-items: center;
 }
 
-.flex-row-container {
-  align-items: center;
+#root > div {
+  flex: 1;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
 }
 
-.flex-grow {
-  flex-grow: 1;
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+a:hover {
+  color: var(--accent-hover);
+  border-bottom-color: currentColor;
+}
+
+button {
+  font-family: inherit;
+}
+
+textarea,
+input {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 .sr-only {
-  border-width: 0;
+  border: 0;
   clip: rect(0, 0, 0, 0);
   height: 1px;
   margin: -1px;
@@ -98,293 +163,127 @@ body,
   width: 1px;
 }
 
-#root {
-  flex-grow: 1;
-  margin: 0;
-  padding: 0rem;
-  width: 100%;
-}
-
-#root > div {
-  flex-grow: 1;
-}
-
-p {
-  margin: 0;
-}
-
-a {
-  color: var(--cdp-example-accent-color);
-}
-
-a:hover {
-  color: var(--cdp-example-accent-hover-color);
-}
-
-hr {
-  border: 0 solid var(--cdp-example-card-border-color);
-  border-bottom-width: 1px;
-  margin: 1rem 0;
-}
-
 .app {
-  height: 100%;
-  color: var(--cdp-example-text-color);
-  margin: 0 auto;
+  flex: 1;
   width: 100%;
-}
-
-header {
-  background-color: var(--cdp-example-card-bg-color);
-  border-bottom: 1px solid var(--cdp-example-card-border-color);
-  padding: 0.5rem 1rem;
-  width: 100%;
-}
-
-header .wallet-address {
-  margin-right: 1rem;
-}
-
-.header-inner {
-  align-items: center;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  margin: 0 auto;
-  max-width: 75rem;
-  text-align: center;
 }
 
-.user-info {
-  justify-content: space-between;
-  width: 100%;
-}
+/* -------------------------------------------------------------------------
+   Lumo — the gradient orb
+   ------------------------------------------------------------------------- */
 
-.user-icon {
-  flex-grow: 0;
-  flex-shrink: 0;
-  height: 1.25rem;
-  margin-right: 0.25rem;
-  width: auto;
-}
-
-.wallet-address {
-  font-family: monospace;
-  font-size: 0.875rem;
-  word-break: break-all;
-}
-
-.main {
-  padding: 4rem 0.5rem;
-  width: 100%;
-}
-
-.main-inner {
-  gap: 1rem;
-  width: 100%;
-}
-
-.main-inner > .card {
-  width: 100%;
-}
-
-.title-container {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.site-title {
-  font-size: 1.2rem;
-  font-weight: 400;
-  line-height: 1.2;
-  margin: 0;
-  margin-bottom: 0.5rem;
-}
-
-.site-title br {
-  display: none;
-}
-
-.smart-badge {
-  background-color: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
-  border-radius: 12px;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-  border: 1px solid rgba(76, 175, 80, 0.3);
+.lumo {
+  position: relative;
   display: inline-block;
+  width: var(--lumo-size, 88px);
+  height: var(--lumo-size, 88px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    var(--lumo-stop-1) 0%,
+    var(--lumo-stop-2) 32%,
+    var(--lumo-stop-3) 68%,
+    var(--lumo-stop-4) 100%
+  );
+  box-shadow:
+    0 0 32px var(--lumo-glow),
+    0 0 72px rgba(255, 152, 100, 0.18),
+    inset 0 0 18px rgba(255, 220, 180, 0.55);
+  animation: lumo-breathe 4.8s ease-in-out infinite;
 }
 
-.smart-account-info {
-  background-color: rgba(76, 175, 80, 0.1);
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  margin: 0.5rem 0;
-  font-size: 0.9rem;
+.lumo::after {
+  /* Soft inner highlight for a candle-flame feel */
+  content: "";
+  position: absolute;
+  inset: 14% 22% 50% 22%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(255, 250, 230, 0.85) 0%,
+    rgba(255, 230, 195, 0.25) 50%,
+    transparent 80%
+  );
+  filter: blur(2px);
+  pointer-events: none;
 }
 
-.smart-account-info:last-child {
-  margin-bottom: 0;
+.lumo[data-state="dim"] {
+  filter: brightness(0.78) saturate(0.85);
+  animation-duration: 7s;
 }
 
-.success-message {
-  background-color: rgba(76, 175, 80, 0.1);
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  margin: 0.5rem 0;
-  font-size: 0.9rem;
-  color: var(--cdp-example-success-color, #4caf50);
+.lumo[data-state="bright"] {
+  animation: lumo-bright 1.4s ease-out 1;
+  box-shadow:
+    0 0 56px var(--lumo-glow),
+    0 0 120px rgba(255, 152, 100, 0.35),
+    inset 0 0 22px rgba(255, 230, 200, 0.7);
 }
 
-.card {
-  align-items: center;
-  background-color: var(--cdp-example-card-bg-color);
-  border: 1px solid var(--cdp-example-card-border-color);
-  border-radius: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  justify-content: space-between;
-  max-width: var(--cdp-example-card-max-width);
-  padding: 2rem 1rem;
-  text-align: center;
-  width: 100%;
+.lumo[data-state="thinking"] {
+  animation: lumo-shimmer 2s ease-in-out infinite;
 }
 
-.card-title {
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.loading--balance {
-  border-radius: 9999em;
-  display: inline-block;
-  height: 2.25rem;
-  width: 7rem;
-}
-
-.loading--text {
-  height: 1rem;
-  border-radius: 9999em;
-  margin: 0.25rem 0;
-  width: 20rem;
-}
-
-.loading--btn {
-  border-radius: 9999em;
-  height: 3.5rem;
-  width: 9.375rem;
-}
-
-.user-balance {
-  font-size: 1.5rem;
-  font-weight: 400;
-}
-
-.user-balance .flex-row-container {
-  justify-content: center;
-}
-
-.balance-icon {
-  flex-grow: 0;
-  flex-shrink: 0;
-  height: 1.5rem;
-  margin-right: 0.5rem;
-  width: auto;
-}
-
-.copy-address-button {
-  background-color: transparent;
-  border: 0;
-  color: var(--cdp-example-text-color);
-  cursor: pointer;
-  padding: 0;
-}
-
-.copy-address-button:hover .user-icon--user,
-.copy-address-button .user-icon--copy {
-  display: none;
-}
-
-.copy-address-button .user-icon--user,
-.copy-address-button:hover .user-icon--copy {
-  display: inline;
-}
-
-.tx-button {
-  padding-left: 2rem;
-  padding-right: 2rem;
-  min-width: 11.75rem;
-}
-
-.page-heading {
-  font-size: 1.5rem;
-  font-weight: 500;
-  line-height: 1;
-  margin: 0 0 1.5rem;
-}
-
-.page-divider {
-  width: 60%;
-  margin: 4rem 0;
-}
-
-.small-text {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.transaction-result {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-@media (min-width: 540px) {
-  .header-inner {
-    flex-direction: row;
-    text-align: left;
+@keyframes lumo-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.96;
   }
-
-  .user-info {
-    width: auto;
-  }
-
-  .site-title {
-    margin-bottom: 0;
-  }
-
-  .site-title br {
-    display: inline;
-  }
-
-  .main {
-    padding: 4rem 1rem;
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
   }
 }
 
-@media (min-width: 860px) {
-  :root {
-    --cdp-example-card-max-width: 35rem;
+@keyframes lumo-bright {
+  0% {
+    transform: scale(1);
   }
-
-  .main-inner {
-    align-items: stretch;
-    flex-direction: row;
+  35% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1.05);
   }
 }
 
-@media (min-width: 1920px) {
-  :root {
-    --cdp-base-font-size: 20px;
+@keyframes lumo-shimmer {
+  0%,
+  100% {
+    box-shadow:
+      0 0 32px var(--lumo-glow),
+      0 0 72px rgba(255, 152, 100, 0.18),
+      inset 0 0 18px rgba(255, 220, 180, 0.55);
   }
+  50% {
+    box-shadow:
+      0 0 48px var(--lumo-glow),
+      0 0 96px rgba(255, 152, 100, 0.28),
+      inset 0 0 26px rgba(255, 240, 215, 0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lumo,
+  .lumo[data-state="bright"],
+  .lumo[data-state="thinking"] {
+    animation: none;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Reusable surfaces
+   ------------------------------------------------------------------------- */
+
+.surface {
+  background: var(--card);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
 }

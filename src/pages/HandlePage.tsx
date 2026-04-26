@@ -6,6 +6,7 @@ import { createWalletClient, custom, publicActions } from "viem"
 import { baseSepolia } from "viem/chains"
 import { wrapFetchWithPayment } from "x402-fetch"
 
+import Lumo from "../components/Lumo"
 import Loading from "../Loading"
 import { useCreatorByHandle } from "../hooks/useCreatorByHandle"
 import { useExternalWallet } from "../hooks/useExternalWallet"
@@ -14,7 +15,7 @@ import { INTENTS, type Intent } from "../intents"
 type Step = "pick" | "compose" | "sent"
 
 const MAX_MESSAGE_LENGTH = 1000
-const MAX_PAYMENT_ATOMIC = 11_000_000n // 11 USDC ceiling
+const MAX_PAYMENT_ATOMIC = 11_000_000n
 
 function HandlePage() {
   const { handle } = useParams()
@@ -29,7 +30,6 @@ function HandlePage() {
 
   const ext = useExternalWallet()
 
-  // External wins if both are connected — the visitor explicitly opted in.
   const activeWallet: { source: "cdp" | "external"; address: string } | null = ext.address
     ? { source: "external", address: ext.address }
     : cdpAddress
@@ -43,9 +43,6 @@ function HandlePage() {
         chain: baseSepolia,
         transport: custom(window.ethereum as Parameters<typeof custom>[0]),
       }).extend(publicActions)
-      // x402's Signer typing is stricter than viem's WalletClient<base-sepolia>
-      // because of how baseSepolia widens the transaction type union. Cast is
-      // safe at runtime — the client implements every method x402 calls.
       return wrapFetchWithPayment(
         fetch,
         client as unknown as Parameters<typeof wrapFetchWithPayment>[1],
@@ -68,8 +65,15 @@ function HandlePage() {
 
   if (notFound || !creator) {
     return (
-      <main style={pageStyle}>
-        <p style={{ color: "#444", fontSize: "1.05rem" }}>
+      <main style={pageContainer}>
+        <Lumo size={88} state="dim" />
+        <p
+          style={{
+            color: "var(--text-muted)",
+            fontSize: "1.1rem",
+            marginTop: "1.5rem",
+          }}
+        >
           Lumo couldn't find that door.
         </p>
       </main>
@@ -109,10 +113,23 @@ function HandlePage() {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Sent state
+  // ---------------------------------------------------------------------
   if (step === "sent") {
     return (
-      <main style={pageStyle}>
-        <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem", lineHeight: 1.5 }}>
+      <main style={pageContainer}>
+        <Lumo size={108} state="bright" />
+        <p
+          style={{
+            fontSize: "1.2rem",
+            margin: "1.75rem 0 1.5rem",
+            lineHeight: 1.5,
+            color: "var(--text)",
+            textAlign: "center",
+            maxWidth: "26rem",
+          }}
+        >
           Thanks for stopping by. I'll make sure this lands.
         </p>
         <button
@@ -123,7 +140,7 @@ function HandlePage() {
             setMessage("")
             setError("")
           }}
-          style={ghostButtonStyle}
+          style={ghostButton}
         >
           Send another
         </button>
@@ -131,6 +148,9 @@ function HandlePage() {
     )
   }
 
+  // ---------------------------------------------------------------------
+  // Compose state
+  // ---------------------------------------------------------------------
   if (step === "compose" && intent) {
     const canSend = !!activeWallet && message.trim().length > 0 && !sending
     const senderShort = activeWallet
@@ -138,7 +158,9 @@ function HandlePage() {
       : null
 
     return (
-      <main style={pageStyle}>
+      <main style={pageContainer}>
+        <Lumo size={64} state={sending ? "thinking" : "idle"} />
+
         <button
           type="button"
           onClick={() => {
@@ -146,36 +168,33 @@ function HandlePage() {
             setMessage("")
             setError("")
           }}
-          style={backLinkStyle}
+          style={{ ...backLink, marginTop: "1.25rem" }}
         >
           ← change reason
         </button>
 
-        <p style={lumoLineStyle}>
-          Got it. The toll is {intent.displayPrice}. What do you want to say?
+        <p style={lumoLine}>
+          Got it. The toll is{" "}
+          <span style={{ color: "var(--accent)", fontWeight: 600 }}>
+            {intent.displayPrice}
+          </span>
+          . What do you want to say?
         </p>
 
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
-          autoFocus
-          rows={6}
-          placeholder="Write your message…"
-          disabled={sending}
-          style={textareaStyle}
-        />
+        <div className="surface" style={{ padding: "0.85rem", width: "100%", marginBottom: "0.6rem" }}>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+            autoFocus
+            rows={6}
+            placeholder="Write your message…"
+            disabled={sending}
+            style={textareaStyle}
+          />
+        </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: "0.5rem",
-            marginBottom: "1.25rem",
-            gap: "0.75rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <span style={{ fontSize: "0.8rem", color: "#999" }}>
+        <div style={metaRow}>
+          <span>
             {activeWallet && senderShort ? (
               <>
                 paying from {senderShort}
@@ -185,61 +204,59 @@ function HandlePage() {
               <>for @{creator.handle}</>
             )}
           </span>
-          <span style={{ fontSize: "0.8rem", color: "#999" }}>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>
             {message.length}/{MAX_MESSAGE_LENGTH}
           </span>
         </div>
 
         {!activeWallet && (
-          <div style={authBlockStyle}>
-            <p style={{ margin: "0 0 0.6rem", fontSize: "0.95rem", color: "#222" }}>
+          <div className="surface" style={authBlock}>
+            <p style={{ margin: "0 0 0.4rem", fontSize: "1rem", color: "var(--text)", fontWeight: 500 }}>
               Sign in to pay the toll
             </p>
-            <p style={{ margin: "0 0 0.85rem", fontSize: "0.85rem", color: "#666" }}>
-              We'll create a wallet for you automatically.
+            <p style={{ margin: "0 0 0.85rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              We'll create a Lumo wallet for you automatically.
             </p>
             <AuthButton />
 
-            <div style={dividerStyle}>
-              <span style={dividerTextStyle}>or</span>
+            <div style={dividerRow}>
+              <span style={dividerLine} />
+              <span style={dividerText}>or</span>
+              <span style={dividerLine} />
             </div>
 
-            <p style={{ margin: "0 0 0.6rem", fontSize: "0.85rem", color: "#666" }}>
+            <p style={{ margin: "0 0 0.6rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
               Already have a crypto wallet?
             </p>
             <button
               type="button"
               onClick={() => ext.connect()}
               disabled={ext.isConnecting}
-              style={connectWalletButtonStyle}
+              style={connectWalletButton}
             >
               {ext.isConnecting ? "Connecting…" : "Connect my wallet"}
             </button>
             {ext.error && (
-              <p style={{ color: "#c00", marginTop: "0.6rem", fontSize: "0.8rem" }}>
+              <p style={{ color: "var(--accent-hover)", marginTop: "0.6rem", fontSize: "0.8rem" }}>
                 {ext.error}
               </p>
             )}
             {!ext.isAvailable && !ext.error && (
-              <p style={{ color: "#888", marginTop: "0.6rem", fontSize: "0.75rem" }}>
-                Coinbase Wallet (or another browser-extension wallet) needs to be installed.
+              <p style={{ color: "var(--text-subtle)", marginTop: "0.6rem", fontSize: "0.75rem" }}>
+                Coinbase Wallet (or another browser extension) needs to be installed.
               </p>
             )}
           </div>
         )}
 
         {activeWallet && (
-          <div style={{ marginBottom: "0.85rem", textAlign: "right" }}>
+          <div style={{ width: "100%", marginBottom: "0.85rem", textAlign: "right" }}>
             {activeWallet.source === "external" ? (
-              <button
-                type="button"
-                onClick={() => ext.disconnect()}
-                style={tinyLinkStyle}
-              >
+              <button type="button" onClick={() => ext.disconnect()} style={tinyLink}>
                 disconnect wallet
               </button>
             ) : cdpSignedIn ? (
-              <span style={{ fontSize: "0.75rem", color: "#888" }}>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-subtle)" }}>
                 signed in via Lumo wallet
               </span>
             ) : null}
@@ -247,14 +264,7 @@ function HandlePage() {
         )}
 
         {error && (
-          <p
-            style={{
-              color: "#c00",
-              marginBottom: "1rem",
-              fontSize: "0.9rem",
-              lineHeight: 1.5,
-            }}
-          >
+          <p style={errorText}>
             {error}
             {error.includes("faucet") && (
               <>
@@ -271,27 +281,29 @@ function HandlePage() {
           type="button"
           onClick={handleSend}
           disabled={!canSend}
-          style={{
-            ...primaryButtonStyle,
-            background: canSend ? "#111" : "#999",
-            cursor: sending ? "wait" : canSend ? "pointer" : "not-allowed",
-          }}
+          style={primaryButton(!canSend, sending)}
         >
-          {sending ? "Sending…" : `Send for ${intent.displayPrice}`}
+          {sending ? "Lumo is checking…" : `Send for ${intent.displayPrice}`}
         </button>
       </main>
     )
   }
 
-  // step === 'pick'
+  // ---------------------------------------------------------------------
+  // Pick state
+  // ---------------------------------------------------------------------
   return (
-    <main style={pageStyle}>
-      <p style={lumoIntroStyle}>
-        Hi. I'm Lumo. I look after @{creator.handle}'s inbox.
-      </p>
-      <p style={lumoLineStyle}>Why are you reaching out?</p>
+    <main style={pageContainer}>
+      <Lumo size={88} />
 
-      <ul style={listStyle}>
+      <p style={{ ...lumoLine, marginTop: "1.5rem", textAlign: "center" }}>
+        Hi. I'm Lumo. I look after <strong>@{creator.handle}</strong>'s inbox.
+      </p>
+      <p style={{ ...lumoLine, color: "var(--text-muted)", textAlign: "center" }}>
+        Why are you reaching out?
+      </p>
+
+      <ul style={{ listStyle: "none", padding: 0, margin: "0.5rem 0 0", width: "100%" }}>
         {INTENTS.map((it) => (
           <li key={it.id} style={{ marginBottom: "0.65rem" }}>
             <button
@@ -301,10 +313,17 @@ function HandlePage() {
                 setStep("compose")
                 setError("")
               }}
-              style={intentButtonStyle}
+              className="surface"
+              style={intentButton}
             >
-              <span>{it.label}</span>
-              <span style={{ color: "#666", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ color: "var(--text)" }}>{it.label}</span>
+              <span
+                style={{
+                  color: "var(--accent)",
+                  fontWeight: 600,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
                 {it.displayPrice}
               </span>
             </button>
@@ -320,7 +339,11 @@ function friendlyPaymentError(reason: string): string {
   if (r.includes("insufficient_balance") || r.includes("insufficient funds")) {
     return "Your wallet needs a little USDC. Get some at faucet.circle.com (Base Sepolia, USDC). Lumo will wait."
   }
-  if (r.includes("user rejected") || r.includes("user denied") || r.includes("rejected the request")) {
+  if (
+    r.includes("user rejected") ||
+    r.includes("user denied") ||
+    r.includes("rejected the request")
+  ) {
     return "Signature cancelled. Try again when you're ready."
   }
   if (r.includes("invalid_payment") || r.includes("invalid_signature")) {
@@ -332,139 +355,161 @@ function friendlyPaymentError(reason: string): string {
   return `Couldn't send: ${reason}`
 }
 
-// --- styles (inline; design pass is Phase 5) ---
+// ----- styles -----
 
-const pageStyle: React.CSSProperties = {
-  padding: "2.5rem 1.25rem",
+const pageContainer: React.CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  padding: "2.5rem 1.25rem 4rem",
   maxWidth: "30rem",
   margin: "0 auto",
-  minHeight: "100vh",
-  boxSizing: "border-box",
+  width: "100%",
 }
 
-const lumoIntroStyle: React.CSSProperties = {
-  fontSize: "1.15rem",
-  lineHeight: 1.5,
-  marginBottom: "1.5rem",
-  color: "#222",
-}
-
-const lumoLineStyle: React.CSSProperties = {
+const lumoLine: React.CSSProperties = {
   fontSize: "1.05rem",
-  lineHeight: 1.5,
-  marginBottom: "1.5rem",
-  color: "#222",
+  lineHeight: 1.55,
+  margin: "0.85rem 0",
+  color: "var(--text)",
+  width: "100%",
 }
 
-const listStyle: React.CSSProperties = {
-  listStyle: "none",
-  padding: 0,
-  margin: 0,
-}
-
-const intentButtonStyle: React.CSSProperties = {
+const intentButton: React.CSSProperties = {
   width: "100%",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   gap: "1rem",
-  padding: "0.95rem 1.1rem",
-  borderRadius: "0.65rem",
-  border: "1px solid #ddd",
-  background: "#fff",
+  padding: "1rem 1.15rem",
   fontSize: "1rem",
-  color: "#222",
   cursor: "pointer",
   textAlign: "left",
-  minHeight: "48px",
+  minHeight: "52px",
+  fontFamily: "inherit",
 }
 
 const textareaStyle: React.CSSProperties = {
   width: "100%",
-  border: "1px solid #ccc",
-  borderRadius: "0.65rem",
-  padding: "0.85rem",
-  fontSize: "1rem",
-  fontFamily: "inherit",
-  lineHeight: 1.5,
-  resize: "vertical",
-  boxSizing: "border-box",
+  border: "none",
   outline: "none",
-}
-
-const primaryButtonStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "0.95rem",
-  borderRadius: "0.65rem",
-  border: "none",
-  color: "#fff",
+  background: "transparent",
   fontSize: "1rem",
-  minHeight: "48px",
+  color: "var(--text)",
+  fontFamily: "inherit",
+  lineHeight: 1.55,
+  resize: "vertical",
+  minHeight: "120px",
 }
 
-const ghostButtonStyle: React.CSSProperties = {
-  padding: "0.65rem 1.1rem",
-  borderRadius: "0.65rem",
-  border: "1px solid #ccc",
-  background: "#fff",
-  cursor: "pointer",
-  fontSize: "0.95rem",
-}
-
-const backLinkStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  padding: 0,
-  marginBottom: "1.25rem",
-  color: "#666",
-  cursor: "pointer",
-  fontSize: "0.9rem",
-}
-
-const authBlockStyle: React.CSSProperties = {
-  padding: "1.25rem",
-  background: "#f7f7f7",
-  borderRadius: "0.75rem",
+const metaRow: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  width: "100%",
   marginBottom: "1rem",
+  gap: "0.75rem",
+  flexWrap: "wrap",
+  fontSize: "0.78rem",
+  color: "var(--text-subtle)",
 }
 
-const dividerStyle: React.CSSProperties = {
+const authBlock: React.CSSProperties = {
+  width: "100%",
+  padding: "1.25rem 1.25rem 1.5rem",
+  marginBottom: "1rem",
+  textAlign: "left",
+}
+
+const dividerRow: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  textAlign: "center",
-  margin: "1.25rem 0",
-  color: "#bbb",
-  fontSize: "0.8rem",
+  gap: "0.6rem",
+  margin: "1rem 0",
 }
 
-const dividerTextStyle: React.CSSProperties = {
-  flex: "0 0 auto",
-  margin: "0 auto",
-  padding: "0 0.75rem",
-  background: "#f7f7f7",
-  position: "relative",
+const dividerLine: React.CSSProperties = {
+  flex: 1,
+  height: "1px",
+  background: "var(--line)",
 }
 
-const connectWalletButtonStyle: React.CSSProperties = {
+const dividerText: React.CSSProperties = {
+  color: "var(--text-subtle)",
+  fontSize: "0.78rem",
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
+}
+
+const connectWalletButton: React.CSSProperties = {
   width: "100%",
-  padding: "0.75rem",
-  borderRadius: "0.65rem",
-  border: "1px solid #222",
-  background: "#fff",
-  color: "#222",
+  padding: "0.78rem",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--line-strong)",
+  background: "var(--card-solid)",
+  color: "var(--text)",
   fontSize: "0.95rem",
+  fontWeight: 500,
   cursor: "pointer",
   minHeight: "44px",
 }
 
-const tinyLinkStyle: React.CSSProperties = {
+function primaryButton(disabled: boolean, loading: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    padding: "0.95rem",
+    borderRadius: "var(--radius)",
+    border: "none",
+    background: disabled ? "var(--text-subtle)" : "var(--accent)",
+    color: "var(--accent-on)",
+    fontSize: "1rem",
+    fontWeight: 600,
+    cursor: loading ? "wait" : disabled ? "not-allowed" : "pointer",
+    minHeight: "52px",
+    boxShadow: disabled ? "none" : "var(--shadow)",
+    transition: "background 0.15s ease",
+  }
+}
+
+const ghostButton: React.CSSProperties = {
+  padding: "0.7rem 1.25rem",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--line-strong)",
+  background: "var(--card-solid)",
+  cursor: "pointer",
+  fontSize: "0.95rem",
+  color: "var(--text)",
+  fontWeight: 500,
+}
+
+const backLink: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  padding: 0,
+  color: "var(--text-muted)",
+  cursor: "pointer",
+  fontSize: "0.85rem",
+  alignSelf: "flex-start",
+  marginBottom: "1rem",
+}
+
+const tinyLink: React.CSSProperties = {
   background: "none",
   border: "none",
   padding: 0,
   fontSize: "0.75rem",
-  color: "#888",
+  color: "var(--text-subtle)",
   cursor: "pointer",
   textDecoration: "underline",
+}
+
+const errorText: React.CSSProperties = {
+  color: "var(--accent-hover)",
+  marginBottom: "1rem",
+  fontSize: "0.9rem",
+  lineHeight: 1.5,
+  width: "100%",
 }
 
 export default HandlePage

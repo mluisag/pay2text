@@ -2,6 +2,7 @@ import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks"
 import { useState, type FormEvent } from "react"
 import { Navigate, useNavigate } from "react-router-dom"
 
+import Lumo from "../components/Lumo"
 import Loading from "../Loading"
 import { useCreatorProfile } from "../hooks/useCreatorProfile"
 
@@ -69,32 +70,55 @@ function OnboardPage() {
       await refresh()
       navigate("/dashboard")
     } catch {
-      setError("Network error. Check your connection and try again.")
+      setError("Network hiccup. Check your connection and try again.")
       setSubmitting(false)
     }
   }
 
   return (
-    <main style={{ padding: "3rem 1.5rem", maxWidth: "32rem", margin: "0 auto" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 500, marginBottom: "0.5rem" }}>
-        Choose your link
-      </h1>
-      <p style={{ marginBottom: "2rem", color: "#666" }}>
-        This is the URL you'll share. Letters and numbers only.
-      </p>
+    <main
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "3rem 1.5rem 4rem",
+        maxWidth: "32rem",
+        margin: "0 auto",
+        width: "100%",
+      }}
+    >
+      <Lumo size={64} />
 
-      <form onSubmit={handleSubmit}>
-        <label style={{ display: "block", marginBottom: "1.5rem" }}>
-          <div
+      <div style={{ width: "100%", marginTop: "1.5rem", textAlign: "center" }}>
+        <h1
+          style={{
+            fontSize: "1.5rem",
+            fontWeight: 600,
+            letterSpacing: "-0.012em",
+            margin: "0 0 0.5rem",
+          }}
+        >
+          Choose your link
+        </h1>
+        <p style={{ color: "var(--text-muted)", margin: "0 0 2rem" }}>
+          This is the URL you'll share. Letters and numbers only.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+        <div className="surface" style={{ padding: "0.5rem 0.85rem", marginBottom: "1rem" }}>
+          <label
             style={{
               display: "flex",
               alignItems: "center",
-              border: "1px solid #ccc",
-              borderRadius: "0.5rem",
-              padding: "0.5rem 0.75rem",
+              gap: "0.1rem",
+              minHeight: "44px",
             }}
           >
-            <span style={{ color: "#666" }}>pay2text.xyz/</span>
+            <span style={{ color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+              pay2text.xyz/
+            </span>
             <input
               type="text"
               value={handle}
@@ -109,64 +133,86 @@ function OnboardPage() {
                 flex: 1,
                 border: "none",
                 outline: "none",
-                padding: "0.25rem",
-                fontSize: "1rem",
                 background: "transparent",
+                fontSize: "1rem",
+                color: "var(--text)",
+                padding: "0.4rem 0",
               }}
             />
-          </div>
-        </label>
+          </label>
+        </div>
 
-        <label style={{ display: "block", marginBottom: "1.5rem" }}>
-          <span
-            style={{
-              display: "block",
-              marginBottom: "0.4rem",
-              fontSize: "0.9rem",
-              color: "#666",
-            }}
-          >
-            Email for forwarded messages (optional)
-          </span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            style={{
-              width: "100%",
-              border: "1px solid #ccc",
-              borderRadius: "0.5rem",
-              padding: "0.625rem 0.75rem",
-              fontSize: "1rem",
-              boxSizing: "border-box",
-            }}
-          />
-        </label>
+        <div className="surface" style={{ padding: "0.85rem", marginBottom: "1.25rem" }}>
+          <label style={{ display: "block" }}>
+            <span
+              style={{
+                display: "block",
+                fontSize: "0.78rem",
+                color: "var(--text-muted)",
+                marginBottom: "0.35rem",
+                letterSpacing: "0.01em",
+              }}
+            >
+              Email for forwarded messages (optional)
+            </span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={{
+                width: "100%",
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                fontSize: "1rem",
+                color: "var(--text)",
+                padding: "0.2rem 0",
+              }}
+            />
+          </label>
+        </div>
 
         {error && (
-          <p style={{ color: "#c00", marginBottom: "1rem", fontSize: "0.95rem" }}>{error}</p>
+          <p
+            style={{
+              color: "var(--accent-hover)",
+              marginBottom: "1rem",
+              fontSize: "0.9rem",
+              lineHeight: 1.5,
+            }}
+          >
+            {error}
+          </p>
         )}
 
         <button
           type="submit"
           disabled={submitting || handle.length < 3}
-          style={{
-            width: "100%",
-            padding: "0.85rem",
-            borderRadius: "0.5rem",
-            border: "none",
-            background: submitting || handle.length < 3 ? "#999" : "#111",
-            color: "#fff",
-            fontSize: "1rem",
-            cursor: submitting ? "wait" : handle.length < 3 ? "not-allowed" : "pointer",
-          }}
+          style={primaryButton(submitting || handle.length < 3, submitting)}
         >
-          {submitting ? "Saving..." : "Continue"}
+          {submitting ? "Saving…" : "Continue"}
         </button>
       </form>
     </main>
   )
+}
+
+function primaryButton(disabled: boolean, loading: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    padding: "0.9rem",
+    borderRadius: "var(--radius)",
+    border: "none",
+    background: disabled ? "var(--text-subtle)" : "var(--accent)",
+    color: "var(--accent-on)",
+    fontSize: "1rem",
+    fontWeight: 500,
+    cursor: loading ? "wait" : disabled ? "not-allowed" : "pointer",
+    minHeight: "48px",
+    boxShadow: disabled ? "none" : "var(--shadow)",
+    transition: "transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease",
+  }
 }
 
 export default OnboardPage

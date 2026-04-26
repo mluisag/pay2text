@@ -3,6 +3,7 @@ import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
 import { useMemo, useState } from "react"
 import { Navigate } from "react-router-dom"
 
+import Lumo from "../components/Lumo"
 import Loading from "../Loading"
 import { useCreatorProfile } from "../hooks/useCreatorProfile"
 import { DEMO_MESSAGES, useMessages, type Message } from "../hooks/useMessages"
@@ -17,14 +18,13 @@ function DashboardPage() {
   const displayMessages = useMemo<Message[]>(() => {
     if (!creator) return []
     if (messages.length > 0) return messages
-    // Show demo content only when there are no real messages so a brand-new
-    // dashboard doesn't look empty during the demo.
     return DEMO_MESSAGES.map((m) => ({ ...m, recipientHandle: creator.handle }))
   }, [messages, creator])
 
-  const totalEarnedUsd = useMemo(() => {
-    return messages.reduce((sum, m) => sum + (Number(m.priceUsd) || 0), 0)
-  }, [messages])
+  const totalEarnedUsd = useMemo(
+    () => messages.reduce((sum, m) => sum + (Number(m.priceUsd) || 0), 0),
+    [messages],
+  )
 
   if (!isSignedIn) return <Navigate to="/" replace />
   if (isLoading) return <Loading />
@@ -39,46 +39,75 @@ function DashboardPage() {
       setCopiedField(field)
       setTimeout(() => setCopiedField(null), 2000)
     } catch {
-      // clipboard may be unavailable on http or in some browsers
+      /* clipboard unavailable */
     }
   }
 
   const truncate = (addr: string) =>
     addr.length > 14 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr
 
+  const hasRealMessages = messages.length > 0
+
   return (
-    <main style={{ padding: "2rem 1.5rem", maxWidth: "40rem", margin: "0 auto" }}>
+    <main
+      style={{
+        flex: 1,
+        padding: "2rem 1.25rem 4rem",
+        maxWidth: "42rem",
+        margin: "0 auto",
+        width: "100%",
+      }}
+    >
       <header
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "2rem",
+          marginBottom: "1.75rem",
           gap: "1rem",
           flexWrap: "wrap",
         }}
       >
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 500, margin: 0 }}>Your inbox</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+          <Lumo size={36} state={hasRealMessages ? "idle" : "dim"} />
+          <div>
+            <h1
+              style={{
+                fontSize: "1.35rem",
+                fontWeight: 600,
+                letterSpacing: "-0.012em",
+                margin: 0,
+              }}
+            >
+              Your inbox
+            </h1>
+            <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              @{creator.handle}
+            </p>
+          </div>
+        </div>
         <AuthButton />
       </header>
 
-      <section style={cardStyle}>
+      <section className="surface" style={cardPadding}>
         <p style={fieldLabelStyle}>Your shareable link</p>
         <div style={fieldRowStyle}>
           <a
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: "1.05rem", fontFamily: "monospace", wordBreak: "break-all" }}
+            style={{
+              fontSize: "1.05rem",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              wordBreak: "break-all",
+              color: "var(--text)",
+            }}
           >
             {link}
           </a>
           <button
             onClick={() => copy(link, "link")}
-            style={{
-              ...copyButtonStyle,
-              background: copiedField === "link" ? "#e0f5e0" : "#f5f5f5",
-            }}
+            style={ghostButton(copiedField === "link")}
           >
             {copiedField === "link" ? "Copied" : "Copy"}
           </button>
@@ -89,15 +118,19 @@ function DashboardPage() {
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gap: "1rem",
-          marginBottom: "1.5rem",
+          gap: "0.85rem",
+          margin: "1rem 0",
         }}
       >
-        <section style={{ ...cardStyle, marginBottom: 0 }}>
-          <p style={fieldLabelStyle}>Wallet (Base Sepolia)</p>
-          <div style={{ ...fieldRowStyle, gap: "0.5rem" }}>
+        <section className="surface" style={cardPadding}>
+          <p style={fieldLabelStyle}>Wallet</p>
+          <div style={{ ...fieldRowStyle, gap: "0.5rem", marginBottom: "0.5rem" }}>
             <span
-              style={{ fontSize: "0.95rem", fontFamily: "monospace" }}
+              style={{
+                fontSize: "0.95rem",
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                color: "var(--text)",
+              }}
               title={walletAddress}
             >
               {truncate(walletAddress)}
@@ -105,16 +138,15 @@ function DashboardPage() {
             <button
               onClick={() => copy(walletAddress, "address")}
               style={{
-                ...copyButtonStyle,
-                background: copiedField === "address" ? "#e0f5e0" : "#f5f5f5",
-                padding: "0.3rem 0.65rem",
-                fontSize: "0.8rem",
+                ...ghostButton(copiedField === "address"),
+                padding: "0.3rem 0.7rem",
+                fontSize: "0.78rem",
               }}
             >
               {copiedField === "address" ? "✓" : "Copy"}
             </button>
           </div>
-          <p style={{ fontSize: "0.75rem", color: "#888", margin: "0.6rem 0 0" }}>
+          <p style={{ fontSize: "0.75rem", color: "var(--text-subtle)", margin: 0 }}>
             <a
               href={`https://sepolia.basescan.org/address/${walletAddress}`}
               target="_blank"
@@ -125,61 +157,80 @@ function DashboardPage() {
           </p>
         </section>
 
-        <section style={{ ...cardStyle, marginBottom: 0 }}>
+        <section className="surface" style={cardPadding}>
           <p style={fieldLabelStyle}>Total earned</p>
-          <p style={{ fontSize: "1.5rem", fontWeight: 500, margin: 0, color: "#111" }}>
+          <p
+            style={{
+              fontSize: "1.6rem",
+              fontWeight: 600,
+              margin: 0,
+              color: "var(--text)",
+              letterSpacing: "-0.012em",
+            }}
+          >
             {formatUsd(totalEarnedUsd)}
           </p>
-          <p style={{ fontSize: "0.75rem", color: "#888", margin: "0.6rem 0 0" }}>
+          <p style={{ fontSize: "0.75rem", color: "var(--text-subtle)", margin: "0.4rem 0 0" }}>
             from {messages.length} {messages.length === 1 ? "message" : "messages"}
           </p>
         </section>
       </div>
 
-      <section style={{ marginBottom: "1.5rem" }}>
+      <section style={{ marginTop: "0.5rem" }}>
         <div
           style={{
             display: "flex",
             alignItems: "baseline",
             justifyContent: "space-between",
             marginBottom: "0.85rem",
+            padding: "0 0.25rem",
           }}
         >
-          <h2 style={{ fontSize: "1.05rem", fontWeight: 500, margin: 0 }}>Messages</h2>
+          <h2 style={{ fontSize: "1rem", fontWeight: 600, margin: 0, letterSpacing: "-0.005em" }}>
+            Messages
+          </h2>
           {messagesLoading && (
-            <span style={{ fontSize: "0.75rem", color: "#999" }}>Lumo is checking…</span>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-subtle)" }}>
+              Lumo is checking…
+            </span>
           )}
         </div>
 
         {displayMessages.length === 0 ? (
-          <div style={emptyStateStyle}>
-            <p style={{ color: "#666", margin: 0 }}>Lumo is on duty. No messages yet.</p>
+          <div
+            className="surface"
+            style={{
+              padding: "3rem 1.5rem",
+              textAlign: "center",
+            }}
+          >
+            <Lumo size={56} state="dim" />
+            <p style={{ color: "var(--text-muted)", margin: "1rem 0 0" }}>
+              Lumo is on duty. No messages yet.
+            </p>
           </div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {displayMessages.map((m) => (
-              <li key={m.id} style={messageCardStyle}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "baseline",
-                    flexWrap: "wrap",
-                    gap: "0.5rem",
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  <span style={{ fontSize: "0.95rem", color: "#222", fontWeight: 500 }}>
+              <li key={m.id} className="surface" style={messageCard}>
+                <div style={messageHeaderRow}>
+                  <span
+                    style={{
+                      fontSize: "0.95rem",
+                      color: "var(--text)",
+                      fontWeight: 600,
+                    }}
+                  >
                     {m.intentLabel}
                   </span>
-                  <span style={{ fontSize: "0.95rem", color: "#222" }}>
+                  <span style={{ fontSize: "0.95rem", color: "var(--accent)", fontWeight: 600 }}>
                     {formatUsd(m.priceUsd)}
                   </span>
                 </div>
                 <p
                   style={{
                     margin: "0 0 0.6rem",
-                    color: "#222",
+                    color: "var(--text)",
                     lineHeight: 1.55,
                     fontSize: "1rem",
                     whiteSpace: "pre-wrap",
@@ -188,29 +239,24 @@ function DashboardPage() {
                 >
                   {m.messageText}
                 </p>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.6rem",
-                    fontSize: "0.75rem",
-                    color: "#888",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span title={m.senderAddress} style={{ fontFamily: "monospace" }}>
+                <div style={messageMetaRow}>
+                  <span
+                    title={m.senderAddress}
+                    style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                  >
                     from {truncate(m.senderAddress)}
                   </span>
-                  <span>·</span>
+                  <span aria-hidden="true">·</span>
                   <span>{formatRelative(m.timestamp)}</span>
                   {m.isDemo && (
                     <>
-                      <span>·</span>
-                      <span style={{ color: "#b88800", fontWeight: 500 }}>demo</span>
+                      <span aria-hidden="true">·</span>
+                      <span style={{ color: "var(--warm)", fontWeight: 600 }}>demo</span>
                     </>
                   )}
                   {m.txHash && (
                     <>
-                      <span>·</span>
+                      <span aria-hidden="true">·</span>
                       <a
                         href={`https://sepolia.basescan.org/tx/${m.txHash}`}
                         target="_blank"
@@ -247,17 +293,13 @@ function formatRelative(iso: string): string {
   return `${Math.floor(diffSec / 86400)}d ago`
 }
 
-const cardStyle: React.CSSProperties = {
-  border: "1px solid #ddd",
-  borderRadius: "0.75rem",
-  padding: "1.5rem",
-  marginBottom: "1.5rem",
-}
+const cardPadding: React.CSSProperties = { padding: "1.1rem 1.25rem" }
 
 const fieldLabelStyle: React.CSSProperties = {
-  fontSize: "0.85rem",
-  color: "#666",
+  fontSize: "0.78rem",
+  color: "var(--text-muted)",
   margin: "0 0 0.5rem",
+  letterSpacing: "0.01em",
 }
 
 const fieldRowStyle: React.CSSProperties = {
@@ -267,27 +309,42 @@ const fieldRowStyle: React.CSSProperties = {
   flexWrap: "wrap",
 }
 
-const copyButtonStyle: React.CSSProperties = {
-  padding: "0.4rem 0.9rem",
-  borderRadius: "0.5rem",
-  border: "1px solid #ccc",
-  cursor: "pointer",
-  fontSize: "0.85rem",
+function ghostButton(active: boolean): React.CSSProperties {
+  return {
+    padding: "0.4rem 0.85rem",
+    borderRadius: "0.55rem",
+    border: "1px solid var(--line-strong)",
+    background: active ? "var(--accent-soft)" : "var(--card-solid)",
+    color: "var(--text)",
+    cursor: "pointer",
+    fontSize: "0.82rem",
+    fontWeight: 500,
+    transition: "background 0.15s ease",
+  }
 }
 
-const messageCardStyle: React.CSSProperties = {
-  border: "1px solid #e5e5e5",
-  borderRadius: "0.75rem",
-  padding: "1.1rem 1.25rem",
+const messageCard: React.CSSProperties = {
+  padding: "1.15rem 1.25rem",
   marginBottom: "0.85rem",
-  background: "#fff",
+  display: "block",
 }
 
-const emptyStateStyle: React.CSSProperties = {
-  border: "1px dashed #ccc",
-  borderRadius: "0.75rem",
-  padding: "3rem 1.5rem",
-  textAlign: "center",
+const messageHeaderRow: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "baseline",
+  flexWrap: "wrap",
+  gap: "0.5rem",
+  marginBottom: "0.5rem",
+}
+
+const messageMetaRow: React.CSSProperties = {
+  display: "flex",
+  gap: "0.55rem",
+  fontSize: "0.75rem",
+  color: "var(--text-subtle)",
+  flexWrap: "wrap",
+  alignItems: "center",
 }
 
 export default DashboardPage
