@@ -1,5 +1,6 @@
 import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks"
 import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
+import { QRCodeSVG } from "qrcode.react"
 import { useMemo, useState } from "react"
 import { Navigate } from "react-router-dom"
 
@@ -86,29 +87,54 @@ function DashboardPage() {
         <AuthButton />
       </header>
 
-      <section className="surface" style={cardPadding}>
+      <section className="surface" style={shareCardStyle}>
         <p style={fieldLabelStyle}>Your shareable link</p>
-        <div style={fieldRowStyle}>
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              fontSize: "1.05rem",
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-              wordBreak: "break-all",
-              color: "var(--text)",
-            }}
-          >
-            {link}
-          </a>
-          <button
-            onClick={() => copy(link, "link")}
-            style={ghostButton(copiedField === "link")}
-          >
-            {copiedField === "link" ? "Copied" : "Copy"}
-          </button>
+        <div style={shareRowStyle}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: "1.125rem",
+                fontWeight: 600,
+                color: "var(--accent)",
+                wordBreak: "break-all",
+                lineHeight: 1.35,
+              }}
+            >
+              {link}
+            </a>
+            <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.85rem" }}>
+              <button
+                onClick={() => copy(link, "link")}
+                style={ghostButton(copiedField === "link")}
+              >
+                {copiedField === "link" ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </div>
+          <div style={qrWrapStyle}>
+            <QRCodeSVG
+              value={link}
+              size={92}
+              bgColor="#ffffff"
+              fgColor="#1f1b16"
+              level="M"
+              marginSize={1}
+            />
+          </div>
         </div>
+        <p
+          style={{
+            fontSize: "0.78rem",
+            color: "var(--text-subtle)",
+            margin: "0.85rem 0 0",
+            letterSpacing: "0.01em",
+          }}
+        >
+          Scan or copy to share
+        </p>
       </section>
 
       <div
@@ -323,6 +349,28 @@ function formatRelative(iso: string): string {
 }
 
 const cardPadding: React.CSSProperties = { padding: "1.1rem 1.25rem" }
+
+const shareCardStyle: React.CSSProperties = {
+  padding: "1.25rem 1.4rem",
+  border: "2px solid var(--accent)",
+  boxShadow: "0 6px 22px rgba(232, 119, 91, 0.16)",
+}
+
+const shareRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "1.25rem",
+  flexWrap: "wrap",
+}
+
+const qrWrapStyle: React.CSSProperties = {
+  flexShrink: 0,
+  padding: "0.55rem",
+  background: "#ffffff",
+  borderRadius: "0.65rem",
+  border: "1px solid var(--line-strong)",
+  boxShadow: "0 2px 6px rgba(31, 27, 22, 0.05)",
+}
 
 const fieldLabelStyle: React.CSSProperties = {
   fontSize: "0.78rem",

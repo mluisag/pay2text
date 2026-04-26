@@ -18,25 +18,25 @@ export function priceUsdToAtomicUsdc(priceUsd: number): bigint {
 export const INTENTS: Intent[] = [
   {
     id: 'just-saying-hi',
-    label: 'just saying hi',
+    label: 'Request warm intro',
     priceUsd: 0.001,
     displayPrice: '0.1¢',
   },
   {
     id: 'got-a-minute',
-    label: 'got a minute?',
+    label: 'Deck review',
     priceUsd: 0.01,
     displayPrice: '1¢',
   },
   {
     id: 'have-an-idea',
-    label: 'have an idea',
+    label: 'Fund raising advice',
     priceUsd: 0.10,
     displayPrice: '10¢',
   },
   {
     id: 'kind-of-important',
-    label: 'kind of important',
+    label: 'Initial discovery. 15 min',
     priceUsd: 1.00,
     displayPrice: '$1',
   },
