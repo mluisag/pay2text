@@ -1,10 +1,20 @@
 import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks"
-import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
+import { AuthButton, type AuthButtonProps } from "@coinbase/cdp-react/components/AuthButton"
+import {
+  SignInModal,
+  SignInModalTrigger,
+} from "@coinbase/cdp-react/components/SignInModal"
 import { Navigate } from "react-router-dom"
 
 import Lumo from "../components/Lumo"
 import Loading from "../Loading"
 import { useCreatorProfile } from "../hooks/useCreatorProfile"
+
+const SignInWithCustomLabel: AuthButtonProps["signInModal"] = (props) => (
+  <SignInModal {...props}>
+    <SignInModalTrigger label="Get my link" />
+  </SignInModal>
+)
 
 function HomePage() {
   const { isSignedIn } = useIsSignedIn()
@@ -37,15 +47,15 @@ function HomePage() {
 
       <h1
         style={{
-          fontSize: "2.1rem",
-          lineHeight: 1.15,
-          letterSpacing: "-0.018em",
+          fontSize: "2.4rem",
+          lineHeight: 1.1,
+          letterSpacing: "-0.022em",
           fontWeight: 600,
-          margin: "0 0 0.75rem",
+          margin: "0 0 0.85rem",
           color: "var(--text)",
         }}
       >
-        Get paid to receive messages.
+        Hi. I'm Lumo.
       </h1>
 
       <p
@@ -53,24 +63,26 @@ function HomePage() {
           fontSize: "1.05rem",
           color: "var(--text-muted)",
           margin: "0 0 2.25rem",
-          maxWidth: "26rem",
+          maxWidth: "28rem",
+          lineHeight: 1.55,
         }}
       >
-        Inboxes are loud. Pay2Text is quiet. The price is the filter.
+        I look after inboxes. People pay a small toll to send a message and ask for
+        favors… the price tells you who actually means it.
       </p>
 
-      <AuthButton />
+      <AuthButton signInModal={SignInWithCustomLabel} />
 
       <p
         style={{
-          marginTop: "2.5rem",
+          marginTop: "2rem",
           fontSize: "0.85rem",
           color: "var(--text-subtle)",
           maxWidth: "24rem",
           lineHeight: 1.55,
         }}
       >
-        We'll create a wallet for you automatically. Sign in with your phone or email.
+        No crypto knowledge needed. Sign in with your phone or email.
       </p>
     </main>
   )
