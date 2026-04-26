@@ -4,6 +4,7 @@ import { decodePayment } from 'x402/schemes'
 import { settleResponseHeader, type PaymentRequirements } from 'x402/types'
 
 import { redis, type Creator } from './_lib/redis.js'
+import { sendMessageEmail } from './_lib/email.js'
 import { INTENTS, priceUsdToAtomicUsdc } from '../src/intents.js'
 
 const FACILITATOR_URL = 'https://x402.org/facilitator'
@@ -144,6 +145,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     await redis.lpush(`messages:${creator.handle}`, JSON.stringify(messageRecord))
+
+    // Email forwarding is best-effort — never block the success response on it.
+    if (creator.email) {
+      const emailResult = await sendMessageEmail({
+        toEmail: creator.email,
+        recipientHandle: creator.handle,
+        intentLabel: intent.label,
+        amountDisplay: intent.displayPrice,
+        senderAddress: messageRecord.senderAddress,
+        messageText: messageRecord.messageText,
+      })
+      if (!emailResult.sent) {
+        console.warn(
+          `Email forward to ${creator.email} skipped or failed:`,
+          emailResult.reason,
+        )
+      }
+    }
 
     res.setHeader('X-PAYMENT-RESPONSE', settleResponseHeader(settleResult))
     return res.status(200).json({ ok: true, messageId: messageRecord.id })
