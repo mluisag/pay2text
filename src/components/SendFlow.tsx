@@ -26,13 +26,15 @@ interface Props {
   handle: string | undefined
   /** Hide the large top-of-page Lumo orb (use when embedded — host already shows Lumo). */
   compact?: boolean
+  /** Called when a payment settles — host can record recents. */
+  onSent?: (handle: string) => void
 }
 
 /**
  * The full sender flow: pick intent -> compose -> pay via x402 -> sent.
  * Used standalone on /:handle and embedded in the dashboard's Send tab.
  */
-function SendFlow({ handle, compact = false }: Props) {
+function SendFlow({ handle, compact = false, onSent }: Props) {
   const { creator, isLoading, notFound } = useCreatorByHandle(handle)
 
   const { isSignedIn: cdpSignedIn } = useIsSignedIn()
@@ -82,6 +84,7 @@ function SendFlow({ handle, compact = false }: Props) {
   const [replyTo, setReplyTo] = useState("")
   const [sending, setSending] = useState(false)
   const [error, setError] = useState("")
+  const [sentTx, setSentTx] = useState<string | null>(null)
 
   if (isLoading) return <Loading />
 
@@ -121,6 +124,9 @@ function SendFlow({ handle, compact = false }: Props) {
         return
       }
 
+      const body = await res.json().catch(() => ({}))
+      setSentTx(typeof body?.txHash === "string" ? body.txHash : null)
+      onSent?.(creator.handle)
       setStep("sent")
       setSending(false)
     } catch (e) {
@@ -138,7 +144,7 @@ function SendFlow({ handle, compact = false }: Props) {
         <p
           style={{
             fontSize: "1.2rem",
-            margin: "1.75rem 0 1.5rem",
+            margin: "1.75rem 0 0.85rem",
             lineHeight: 1.5,
             color: "var(--text)",
             textAlign: "center",
@@ -147,6 +153,46 @@ function SendFlow({ handle, compact = false }: Props) {
         >
           Thanks for stopping by. I'll make sure this lands.
         </p>
+
+        {intent && (
+          <p
+            style={{
+              fontSize: "0.95rem",
+              margin: "0 0 0.4rem",
+              color: "var(--text-muted)",
+              textAlign: "center",
+            }}
+          >
+            <span style={{ color: "var(--accent)", fontWeight: 600 }}>
+              {intent.displayPrice}
+            </span>{" "}
+            landed in{" "}
+            <strong style={{ color: "var(--text)" }}>@{creator.handle}</strong>
+            's wallet
+          </p>
+        )}
+
+        {sentTx && (
+          <p
+            style={{
+              fontSize: "0.8rem",
+              color: "var(--text-subtle)",
+              margin: "0 0 1.75rem",
+              textAlign: "center",
+            }}
+          >
+            <a
+              href={`https://sepolia.basescan.org/tx/${sentTx}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              tx confirmed on Base Sepolia ↗
+            </a>
+          </p>
+        )}
+
+        {!sentTx && <div style={{ height: "1.5rem" }} />}
+
         <button
           type="button"
           onClick={() => {
@@ -155,6 +201,7 @@ function SendFlow({ handle, compact = false }: Props) {
             setMessage("")
             setReplyTo("")
             setError("")
+            setSentTx(null)
           }}
           style={ghostButton}
         >
@@ -229,55 +276,60 @@ function SendFlow({ handle, compact = false }: Props) {
             )}
           </div>
         ) : (
-          <div style={prominentAuthBlock}>
-            <p style={{ margin: "0 0 0.4rem", fontSize: "1.05rem", color: "var(--text)", fontWeight: 600 }}>
+          <div style={compactAuthBlock}>
+            <p
+              style={{
+                margin: "0 0 0.7rem",
+                fontSize: "0.9rem",
+                color: "var(--text)",
+                fontWeight: 600,
+              }}
+            >
               Sign in to pay the toll
-            </p>
-            <p style={{ margin: "0 0 1rem", fontSize: "0.88rem", color: "var(--text-muted)" }}>
-              We'll create a Lumo wallet for you automatically.
             </p>
             <div>
               <AuthButton />
             </div>
-
-            <div style={dividerRow}>
-              <span style={dividerLine} />
-              <span style={dividerText}>or</span>
-              <span style={dividerLine} />
-            </div>
-
-            <p style={{ margin: "0 0 0.6rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Already have a crypto wallet?
-            </p>
-            <button
-              type="button"
-              onClick={() => ext.connect()}
-              disabled={ext.isConnecting}
-              style={connectWalletButton}
-            >
-              {ext.isConnecting ? "Connecting…" : "Connect my wallet"}
-            </button>
-            {ext.error && (
-              <p style={{ color: "var(--accent-hover)", marginTop: "0.6rem", fontSize: "0.8rem" }}>
-                {ext.error}
+            {ext.isAvailable && (
+              <p style={{ margin: "0.7rem 0 0", fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                Already have a crypto wallet?{" "}
+                <button
+                  type="button"
+                  onClick={() => ext.connect()}
+                  disabled={ext.isConnecting}
+                  style={inlineConnectLink}
+                >
+                  {ext.isConnecting ? "Connecting…" : "Connect →"}
+                </button>
               </p>
             )}
-            {!ext.isAvailable && !ext.error && (
-              <p style={{ color: "var(--text-subtle)", marginTop: "0.6rem", fontSize: "0.75rem" }}>
-                Coinbase Wallet (or another browser extension) needs to be installed.
+            {ext.error && (
+              <p style={{ color: "var(--accent-hover)", marginTop: "0.5rem", fontSize: "0.78rem" }}>
+                {ext.error}
               </p>
             )}
           </div>
         )}
 
-        <div className="surface" style={{ padding: "0.85rem 1rem", width: "100%", marginBottom: "0.6rem" }}>
+        <div className="surface" style={{ padding: "0.85rem", width: "100%", marginBottom: "0.6rem" }}>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+            rows={6}
+            placeholder="Write your message…"
+            disabled={sending}
+            style={textareaStyle}
+          />
+        </div>
+
+        <div className="surface" style={{ padding: "0.7rem 0.95rem", width: "100%", marginBottom: "0.6rem" }}>
           <label style={{ display: "block" }}>
             <span
               style={{
                 display: "block",
                 fontSize: "0.78rem",
                 color: "var(--text-muted)",
-                marginBottom: "0.3rem",
+                marginBottom: "0.25rem",
                 letterSpacing: "0.01em",
               }}
             >
@@ -292,17 +344,6 @@ function SendFlow({ handle, compact = false }: Props) {
               style={replyToInput}
             />
           </label>
-        </div>
-
-        <div className="surface" style={{ padding: "0.85rem", width: "100%", marginBottom: "0.6rem" }}>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
-            rows={6}
-            placeholder="Write your message…"
-            disabled={sending}
-            style={textareaStyle}
-          />
         </div>
 
         <div style={metaRow}>
@@ -508,17 +549,29 @@ const metaRow: React.CSSProperties = {
   color: "var(--text-subtle)",
 }
 
-const prominentAuthBlock: React.CSSProperties = {
+const compactAuthBlock: React.CSSProperties = {
   width: "100%",
-  padding: "1.5rem 1.4rem 1.7rem",
-  marginBottom: "1rem",
+  padding: "0.95rem 1.1rem",
+  marginBottom: "0.85rem",
   textAlign: "left",
-  border: "2px solid var(--accent)",
-  borderRadius: "var(--radius-lg)",
+  border: "1.5px solid var(--accent)",
+  borderRadius: "var(--radius)",
   background: "var(--card)",
   backdropFilter: "blur(14px) saturate(1.05)",
   WebkitBackdropFilter: "blur(14px) saturate(1.05)",
-  boxShadow: "0 6px 24px rgba(232, 119, 91, 0.18)",
+  boxShadow: "0 3px 12px rgba(232, 119, 91, 0.12)",
+}
+
+const inlineConnectLink: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  padding: 0,
+  color: "var(--accent)",
+  fontWeight: 600,
+  cursor: "pointer",
+  fontSize: "inherit",
+  fontFamily: "inherit",
+  textDecoration: "underline",
 }
 
 const inlineSignedInBar: React.CSSProperties = {
@@ -531,39 +584,6 @@ const inlineSignedInBar: React.CSSProperties = {
   border: "1px solid var(--line)",
   borderRadius: "var(--radius)",
   textAlign: "center",
-}
-
-const dividerRow: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "0.6rem",
-  margin: "1rem 0",
-}
-
-const dividerLine: React.CSSProperties = {
-  flex: 1,
-  height: "1px",
-  background: "var(--line)",
-}
-
-const dividerText: React.CSSProperties = {
-  color: "var(--text-subtle)",
-  fontSize: "0.78rem",
-  letterSpacing: "0.05em",
-  textTransform: "uppercase",
-}
-
-const connectWalletButton: React.CSSProperties = {
-  width: "100%",
-  padding: "0.78rem",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--line-strong)",
-  background: "var(--card-solid)",
-  color: "var(--text)",
-  fontSize: "0.95rem",
-  fontWeight: 500,
-  cursor: "pointer",
-  minHeight: "44px",
 }
 
 function primaryButton(disabled: boolean, loading: boolean): React.CSSProperties {

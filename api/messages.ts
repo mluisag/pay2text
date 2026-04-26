@@ -203,7 +203,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     res.setHeader('X-PAYMENT-RESPONSE', settleResponseHeader(settleResult))
-    return res.status(200).json({ ok: true, messageId: messageRecord.id })
+    return res.status(200).json({
+      ok: true,
+      messageId: messageRecord.id,
+      txHash: messageRecord.txHash,
+    })
   } catch (err) {
     console.error('messages handler error:', err)
     return res.status(500).json({ error: 'server_error' })
