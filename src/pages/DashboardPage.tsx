@@ -1,8 +1,8 @@
 import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks"
 import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
 import { QRCodeSVG } from "qrcode.react"
-import { useEffect, useMemo, useState, type FormEvent } from "react"
-import { Navigate } from "react-router-dom"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { Link, Navigate } from "react-router-dom"
 
 import Lumo from "../components/Lumo"
 import Loading from "../Loading"
@@ -12,6 +12,28 @@ import { useMessages, type Message } from "../hooks/useMessages"
 
 type Mode = "receive" | "send"
 type SortMode = "intent" | "recent" | "paid"
+type HandleStatus = "idle" | "checking" | "found" | "not_found"
+
+const RECENTS_KEY = "lumo:recent-handles"
+const MAX_RECENTS = 5
+
+function loadRecents(): string[] {
+  try {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(RECENTS_KEY) : null
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter((s) => typeof s === "string") : []
+  } catch {
+    return []
+  }
+}
+
+function saveRecents(list: string[]) {
+  try {
+    window.localStorage.setItem(RECENTS_KEY, JSON.stringify(list))
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 function DashboardPage() {
   const { isSignedIn } = useIsSignedIn()
@@ -24,6 +46,25 @@ function DashboardPage() {
   const [mode, setMode] = useState<Mode>("receive")
   const [sendHandleInput, setSendHandleInput] = useState("")
   const [sendTarget, setSendTarget] = useState<string | null>(null)
+  const [handleStatus, setHandleStatus] = useState<HandleStatus>("idle")
+  const [recents, setRecents] = useState<string[]>(() => loadRecents())
+
+  // Profile modal
+  const [profileOpen, setProfileOpen] = useState(false)
+
+  // First-knock celebration: brighten Lumo when the inbox flips from 0 -> 1.
+  const prevCountRef = useRef<number | null>(null)
+  const [celebrating, setCelebrating] = useState(false)
+  useEffect(() => {
+    const prev = prevCountRef.current
+    if (prev === 0 && messages.length === 1) {
+      setCelebrating(true)
+      const t = setTimeout(() => setCelebrating(false), 5000)
+      prevCountRef.current = messages.length
+      return () => clearTimeout(t)
+    }
+    prevCountRef.current = messages.length
+  }, [messages.length])
 
   // Background follows the active mode — peach for Receive, lavender for Send.
   useEffect(() => {
@@ -41,6 +82,7 @@ function DashboardPage() {
     if (next === "receive") {
       setSendTarget(null)
       setSendHandleInput("")
+      setHandleStatus("idle")
     }
     setMode(next)
   }
@@ -48,8 +90,40 @@ function DashboardPage() {
   const onSendHandleSubmit = (e: FormEvent) => {
     e.preventDefault()
     const trimmed = sendHandleInput.trim().toLowerCase().replace(/^@/, "")
-    if (trimmed.length >= 3) setSendTarget(trimmed)
+    if (trimmed.length >= 3 && handleStatus !== "not_found") setSendTarget(trimmed)
   }
+
+  const recordRecent = (handle: string) => {
+    const next = [handle, ...recents.filter((h) => h !== handle)].slice(0, MAX_RECENTS)
+    setRecents(next)
+    saveRecents(next)
+  }
+
+  // Debounced handle existence check on the Send tab input.
+  useEffect(() => {
+    if (mode !== "send" || sendTarget) return
+    const trimmed = sendHandleInput.trim().toLowerCase()
+    if (trimmed.length < 3) {
+      setHandleStatus("idle")
+      return
+    }
+    setHandleStatus("checking")
+    const t = setTimeout(() => {
+      let cancelled = false
+      fetch(`/api/creators?handle=${encodeURIComponent(trimmed)}`)
+        .then((res) => {
+          if (cancelled) return
+          setHandleStatus(res.ok ? "found" : "not_found")
+        })
+        .catch(() => {
+          if (!cancelled) setHandleStatus("idle")
+        })
+      return () => {
+        cancelled = true
+      }
+    }, 350)
+    return () => clearTimeout(t)
+  }, [sendHandleInput, mode, sendTarget])
 
   // Inbox view controls
   const [sortMode, setSortMode] = useState<SortMode>("intent")
@@ -153,7 +227,10 @@ function DashboardPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
-          <Lumo size={36} state={hasRealMessages ? "idle" : "dim"} />
+          <Lumo
+            size={36}
+            state={celebrating ? "bright" : hasRealMessages ? "idle" : "dim"}
+          />
           <div>
             <h1
               style={{
@@ -173,26 +250,41 @@ function DashboardPage() {
         <AuthButton />
       </header>
 
-      <div role="tablist" aria-label="Send or receive" style={tabsRowStyle}>
+      {celebrating && (
+        <div role="status" style={firstKnockBanner}>
+          <span style={{ color: "var(--accent)", marginRight: "0.45rem" }}>✦</span>
+          Lumo let your first visitor in
+        </div>
+      )}
+
+      <nav aria-label="Dashboard sections" style={tabsRowStyle}>
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === "receive"}
+          aria-current={mode === "receive" ? "page" : undefined}
           onClick={() => switchMode("receive")}
           style={tabButtonStyle(mode === "receive")}
         >
-          Receive
+          Inbox
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === "send"}
+          aria-current={mode === "send" ? "page" : undefined}
           onClick={() => switchMode("send")}
           style={tabButtonStyle(mode === "send")}
         >
           Send
         </button>
-      </div>
+        <Link to="/agent" style={tabLinkStyle}>
+          Agent
+        </Link>
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          style={tabButtonStyle(false)}
+        >
+          Profile
+        </button>
+      </nav>
 
       {mode === "send" ? (
         <section style={{ width: "100%" }}>
@@ -214,11 +306,44 @@ function DashboardPage() {
                   autoFocus
                   style={sendHandleInputStyle}
                 />
+                <span style={handleStatusBadge(handleStatus)}>
+                  {handleStatus === "checking" && "checking…"}
+                  {handleStatus === "found" && "✓"}
+                  {handleStatus === "not_found" && "no door here"}
+                </span>
               </div>
+              {recents.length > 0 && (
+                <div style={recentsRow}>
+                  <span style={{ fontSize: "0.78rem", color: "var(--text-subtle)" }}>
+                    recent:
+                  </span>
+                  {recents.map((h) => (
+                    <button
+                      type="button"
+                      key={h}
+                      onClick={() => {
+                        setSendHandleInput(h)
+                        setSendTarget(h)
+                      }}
+                      style={recentChip}
+                    >
+                      @{h}
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 type="submit"
-                disabled={sendHandleInput.trim().length < 3}
-                style={openSendButton(sendHandleInput.trim().length < 3)}
+                disabled={
+                  sendHandleInput.trim().length < 3 ||
+                  handleStatus === "not_found" ||
+                  handleStatus === "checking"
+                }
+                style={openSendButton(
+                  sendHandleInput.trim().length < 3 ||
+                    handleStatus === "not_found" ||
+                    handleStatus === "checking",
+                )}
               >
                 Knock on their door →
               </button>
@@ -232,12 +357,20 @@ function DashboardPage() {
               >
                 ← change recipient
               </button>
-              <SendFlow handle={sendTarget} compact />
+              <SendFlow handle={sendTarget} compact onSent={recordRecent} />
             </div>
           )}
         </section>
       ) : (
         <ReceiveContent />
+      )}
+
+      {profileOpen && (
+        <ProfileModal
+          creator={creator}
+          walletAddress={walletAddress}
+          onClose={() => setProfileOpen(false)}
+        />
       )}
     </main>
   )
@@ -482,6 +615,111 @@ function DashboardPage() {
       </>
     )
   }
+}
+
+function ProfileModal({
+  creator,
+  walletAddress,
+  onClose,
+}: {
+  creator: { handle: string; email?: string }
+  walletAddress: string
+  onClose: () => void
+}) {
+  const [email, setEmail] = useState(creator.email ?? "")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const [saved, setSaved] = useState(false)
+
+  const onSave = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError("")
+    try {
+      const res = await fetch("/api/creators", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress, email: email.trim() }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setError(body?.error ?? `status ${res.status}`)
+        setSaving(false)
+        return
+      }
+      setSaved(true)
+      setSaving(false)
+      setTimeout(onClose, 700)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "unknown")
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Profile"
+      onClick={onClose}
+      style={modalOverlay}
+    >
+      <div
+        className="surface"
+        onClick={(e) => e.stopPropagation()}
+        style={modalCard}
+      >
+        <div style={modalHeader}>
+          <h2 style={{ fontSize: "1.15rem", fontWeight: 600, margin: 0 }}>
+            Profile
+          </h2>
+          <button type="button" onClick={onClose} style={modalCloseButton} aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <p style={modalLabel}>Handle</p>
+        <p style={{ ...modalReadonly, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+          @{creator.handle}
+          <span style={{ color: "var(--text-subtle)", fontWeight: 400, marginLeft: "0.4rem" }}>
+            (locked)
+          </span>
+        </p>
+
+        <p style={modalLabel}>Wallet</p>
+        <p style={{ ...modalReadonly, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+          {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}
+        </p>
+
+        <form onSubmit={onSave}>
+          <label style={modalLabelLabel}>
+            Email (where Lumo forwards messages)
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={modalInput}
+            />
+          </label>
+
+          {error && (
+            <p style={{ color: "var(--accent-hover)", fontSize: "0.85rem", margin: "0 0 0.75rem" }}>
+              Couldn't save: {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            style={modalPrimary(saving || saved, saving)}
+          >
+            {saved ? "Saved ✓" : saving ? "Saving…" : "Save"}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
 }
 
 interface MessageBodyProps {
@@ -742,9 +980,78 @@ function tabButtonStyle(active: boolean): React.CSSProperties {
     fontWeight: active ? 600 : 500,
     fontSize: "0.9rem",
     cursor: "pointer",
-    minWidth: "84px",
+    minWidth: "72px",
     transition: "background 0.15s ease, color 0.15s ease",
+    fontFamily: "inherit",
   }
+}
+
+const tabLinkStyle: React.CSSProperties = {
+  padding: "0.5rem 1.1rem",
+  borderRadius: "999px",
+  background: "transparent",
+  color: "var(--text-muted)",
+  fontWeight: 500,
+  fontSize: "0.9rem",
+  textDecoration: "none",
+  borderBottom: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  minWidth: "72px",
+  justifyContent: "center",
+}
+
+const firstKnockBanner: React.CSSProperties = {
+  padding: "0.7rem 1rem",
+  marginBottom: "1rem",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--accent)",
+  background: "var(--accent-soft)",
+  color: "var(--text)",
+  fontSize: "0.9rem",
+  fontWeight: 500,
+  textAlign: "center",
+  animation: "lumo-bright 1.6s ease-out 1",
+}
+
+function handleStatusBadge(status: HandleStatus): React.CSSProperties {
+  const baseStyle: React.CSSProperties = {
+    fontSize: "0.78rem",
+    fontWeight: 500,
+    padding: "0.15rem 0.45rem",
+    borderRadius: "999px",
+    minWidth: "1.5rem",
+    textAlign: "center",
+  }
+  if (status === "found") {
+    return { ...baseStyle, color: "#1f7a1f", background: "rgba(50, 170, 60, 0.12)" }
+  }
+  if (status === "not_found") {
+    return { ...baseStyle, color: "var(--accent-hover)", background: "var(--accent-soft)" }
+  }
+  if (status === "checking") {
+    return { ...baseStyle, color: "var(--text-subtle)", background: "transparent" }
+  }
+  return { ...baseStyle, color: "transparent", background: "transparent" }
+}
+
+const recentsRow: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.4rem",
+  flexWrap: "wrap",
+  marginBottom: "1rem",
+}
+
+const recentChip: React.CSSProperties = {
+  padding: "0.25rem 0.65rem",
+  borderRadius: "999px",
+  border: "1px solid var(--line-strong)",
+  background: "var(--card-solid)",
+  color: "var(--text)",
+  fontSize: "0.8rem",
+  cursor: "pointer",
+  fontFamily: "inherit",
 }
 
 const sendHandleCardStyle: React.CSSProperties = {
@@ -798,6 +1105,99 @@ const changeRecipientLink: React.CSSProperties = {
   color: "var(--text-muted)",
   cursor: "pointer",
   fontSize: "0.85rem",
+}
+
+// --- Profile modal ---
+
+const modalOverlay: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(31, 27, 22, 0.45)",
+  backdropFilter: "blur(4px)",
+  WebkitBackdropFilter: "blur(4px)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "1.25rem",
+  zIndex: 50,
+  animation: "fade-in 0.18s ease-out",
+}
+
+const modalCard: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "26rem",
+  padding: "1.5rem 1.5rem 1.75rem",
+  background: "var(--card-solid)",
+  border: "1px solid var(--line-strong)",
+}
+
+const modalHeader: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "1rem",
+}
+
+const modalCloseButton: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  fontSize: "1.4rem",
+  color: "var(--text-muted)",
+  cursor: "pointer",
+  padding: "0 0.4rem",
+  lineHeight: 1,
+}
+
+const modalLabel: React.CSSProperties = {
+  fontSize: "0.78rem",
+  color: "var(--text-muted)",
+  margin: "0 0 0.3rem",
+  letterSpacing: "0.01em",
+}
+
+const modalReadonly: React.CSSProperties = {
+  fontSize: "0.95rem",
+  color: "var(--text)",
+  margin: "0 0 1rem",
+}
+
+const modalLabelLabel: React.CSSProperties = {
+  display: "block",
+  fontSize: "0.78rem",
+  color: "var(--text-muted)",
+  marginBottom: "0.3rem",
+  letterSpacing: "0.01em",
+}
+
+const modalInput: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  padding: "0.65rem 0.8rem",
+  marginTop: "0.35rem",
+  marginBottom: "1rem",
+  border: "1px solid var(--line-strong)",
+  borderRadius: "var(--radius)",
+  background: "var(--card-solid)",
+  fontSize: "1rem",
+  color: "var(--text)",
+  fontFamily: "inherit",
+  outline: "none",
+  boxSizing: "border-box",
+}
+
+function modalPrimary(disabled: boolean, loading: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    padding: "0.75rem",
+    borderRadius: "var(--radius)",
+    border: "none",
+    background: disabled ? "var(--text-subtle)" : "var(--accent)",
+    color: "var(--accent-on)",
+    fontSize: "0.95rem",
+    fontWeight: 600,
+    cursor: loading ? "wait" : disabled ? "not-allowed" : "pointer",
+    minHeight: "44px",
+  }
 }
 
 const shareCardStyle: React.CSSProperties = {

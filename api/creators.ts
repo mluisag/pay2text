@@ -61,7 +61,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(201).json(creator)
     }
 
-    res.setHeader('Allow', 'GET, POST')
+    if (req.method === 'PATCH') {
+      const { walletAddress, email } = req.body ?? {}
+      if (typeof walletAddress !== 'string') {
+        return res.status(400).json({ error: 'invalid_body' })
+      }
+      const normalizedAddress = walletAddress.toLowerCase()
+      const handleForWallet = await redis.get<string>(`wallet:${normalizedAddress}`)
+      if (!handleForWallet) return res.status(404).json({ error: 'not_found' })
+
+      const existing = await redis.get<Creator>(`creator:${handleForWallet}`)
+      if (!existing) return res.status(404).json({ error: 'not_found' })
+
+      // Only fields we currently allow editing.
+      const nextEmail =
+        typeof email === 'string'
+          ? email.trim() === ''
+            ? undefined
+            : email.trim()
+          : existing.email
+
+      const updated: Creator = { ...existing, email: nextEmail }
+      await redis.set(`creator:${handleForWallet}`, updated)
+      return res.status(200).json(updated)
+    }
+
+    res.setHeader('Allow', 'GET, POST, PATCH')
     return res.status(405).json({ error: 'method_not_allowed' })
   } catch (err) {
     console.error('creators handler error:', err)
