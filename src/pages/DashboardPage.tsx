@@ -6,7 +6,7 @@ import { Navigate } from "react-router-dom"
 import Lumo from "../components/Lumo"
 import Loading from "../Loading"
 import { useCreatorProfile } from "../hooks/useCreatorProfile"
-import { DEMO_MESSAGES, useMessages, type Message } from "../hooks/useMessages"
+import { useMessages } from "../hooks/useMessages"
 
 function DashboardPage() {
   const { isSignedIn } = useIsSignedIn()
@@ -15,11 +15,7 @@ function DashboardPage() {
   const { messages, isLoading: messagesLoading } = useMessages(creator?.handle)
   const [copiedField, setCopiedField] = useState<"link" | "address" | null>(null)
 
-  const displayMessages = useMemo<Message[]>(() => {
-    if (!creator) return []
-    if (messages.length > 0) return messages
-    return DEMO_MESSAGES.map((m) => ({ ...m, recipientHandle: creator.handle }))
-  }, [messages, creator])
+  const displayMessages = messages
 
   const totalEarnedUsd = useMemo(
     () => messages.reduce((sum, m) => sum + (Number(m.priceUsd) || 0), 0),
