@@ -1,4 +1,10 @@
-import { useEvmAddress, useIsSignedIn, useX402 } from "@coinbase/cdp-hooks"
+import {
+  useCurrentUser,
+  useEvmAddress,
+  useIsSignedIn,
+  useSignOut,
+  useX402,
+} from "@coinbase/cdp-hooks"
 import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
 import { useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
@@ -23,12 +29,19 @@ function HandlePage() {
 
   const { isSignedIn: cdpSignedIn } = useIsSignedIn()
   const { evmAddress: cdpAddress } = useEvmAddress()
+  const { currentUser } = useCurrentUser()
+  const { signOut } = useSignOut()
   const { fetchWithPayment: cdpFetchWithPayment } = useX402({
     address: cdpAddress ?? undefined,
     maxValue: MAX_PAYMENT_ATOMIC,
   })
 
   const ext = useExternalWallet()
+
+  // Email or phone the visitor used to sign in (CDP path only).
+  const cdpIdentity = currentUser?.authenticationMethods?.email?.email
+    ?? currentUser?.authenticationMethods?.sms?.phoneNumber
+    ?? null
 
   const activeWallet: { source: "cdp" | "external"; address: string } | null = ext.address
     ? { source: "external", address: ext.address }
@@ -144,6 +157,10 @@ function HandlePage() {
         >
           Send another
         </button>
+
+        {cdpSignedIn && cdpIdentity && (
+          <SenderIdentityBar identity={cdpIdentity} onSignOut={signOut} />
+        )}
       </main>
     )
   }
@@ -285,6 +302,10 @@ function HandlePage() {
         >
           {sending ? "Lumo is checking…" : `Send for ${intent.displayPrice}`}
         </button>
+
+        {cdpSignedIn && cdpIdentity && (
+          <SenderIdentityBar identity={cdpIdentity} onSignOut={signOut} />
+        )}
       </main>
     )
   }
@@ -331,6 +352,47 @@ function HandlePage() {
         ))}
       </ul>
     </main>
+  )
+}
+
+function SenderIdentityBar({
+  identity,
+  onSignOut,
+}: {
+  identity: string
+  onSignOut: () => Promise<void>
+}) {
+  return (
+    <p
+      style={{
+        marginTop: "2rem",
+        fontSize: "0.78rem",
+        color: "var(--text-subtle)",
+        textAlign: "center",
+        lineHeight: 1.5,
+      }}
+    >
+      Sending as <span style={{ color: "var(--text-muted)" }}>{identity}</span>
+      <span aria-hidden="true"> · </span>
+      <button
+        type="button"
+        onClick={() => {
+          void onSignOut()
+        }}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          color: "var(--text-subtle)",
+          textDecoration: "underline",
+          cursor: "pointer",
+          fontSize: "inherit",
+          fontFamily: "inherit",
+        }}
+      >
+        Not you? Sign out
+      </button>
+    </p>
   )
 }
 
