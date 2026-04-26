@@ -42,7 +42,7 @@ export const INTENTS: Intent[] = [
   },
   {
     id: 'i-love-you',
-    label: 'I love you',
+    label: 'Strategic partnership',
     priceUsd: 10.00,
     displayPrice: '$10',
   },
