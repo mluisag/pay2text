@@ -6,7 +6,7 @@ import {
   useX402,
 } from "@coinbase/cdp-hooks"
 import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 import { createWalletClient, custom, publicActions } from "viem"
 import { baseSepolia } from "viem/chains"
@@ -73,6 +73,15 @@ function HandlePage() {
   const [message, setMessage] = useState("")
   const [sending, setSending] = useState(false)
   const [error, setError] = useState("")
+
+  // Sender (visitor) page uses a cooler lavender background — the visual
+  // cue that you're entering someone else's inbox. Reverts on unmount.
+  useEffect(() => {
+    document.body.classList.add("sender-bg")
+    return () => {
+      document.body.classList.remove("sender-bg")
+    }
+  }, [])
 
   if (isLoading) return <Loading />
 
@@ -197,6 +206,19 @@ function HandlePage() {
           </span>
           . What do you want to say?
         </p>
+
+        {!activeWallet && ext.isAvailable && (
+          <button
+            type="button"
+            onClick={() => ext.connect()}
+            disabled={ext.isConnecting}
+            style={connectShortcut}
+          >
+            {ext.isConnecting
+              ? "Connecting wallet…"
+              : "Already have a wallet? Connect now →"}
+          </button>
+        )}
 
         <div className="surface" style={{ padding: "0.85rem", width: "100%", marginBottom: "0.6rem" }}>
           <textarea
@@ -502,6 +524,21 @@ const dividerText: React.CSSProperties = {
   fontSize: "0.78rem",
   letterSpacing: "0.05em",
   textTransform: "uppercase",
+}
+
+const connectShortcut: React.CSSProperties = {
+  alignSelf: "flex-start",
+  background: "none",
+  border: "none",
+  padding: "0.35rem 0",
+  margin: "-0.25rem 0 0.85rem",
+  color: "var(--text-muted)",
+  cursor: "pointer",
+  fontSize: "0.85rem",
+  fontFamily: "inherit",
+  textDecoration: "underline",
+  textDecorationColor: "var(--line-strong)",
+  textUnderlineOffset: "3px",
 }
 
 const connectWalletButton: React.CSSProperties = {

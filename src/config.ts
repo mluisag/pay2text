@@ -28,7 +28,7 @@ export const CDP_CONFIG = {
       createOnLogin: solanaAccountType,
     },
   }),
-  appName: "CDP React StarterKit",
-  appLogoUrl: "http://localhost:3000/logo.svg",
+  appName: "pay2text",
+  appLogoUrl: "https://pay2text.xyz/lumo.svg",
   authMethods: ["email", "sms"],
 } as Config;

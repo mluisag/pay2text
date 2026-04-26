@@ -98,15 +98,27 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background-color: var(--bg);
   color: var(--text);
-  /* Ambient warm light from corners — Lumo's atmosphere */
+  /* Default — warm peach: Lumo's home (creator + homepage). */
   background-image:
     radial-gradient(ellipse 60% 40% at 0% 0%, rgba(255, 213, 175, 0.55) 0%, transparent 60%),
     radial-gradient(ellipse 50% 35% at 100% 0%, rgba(255, 184, 156, 0.4) 0%, transparent 55%),
     radial-gradient(ellipse 70% 50% at 50% 100%, rgba(232, 119, 91, 0.16) 0%, transparent 60%);
   background-attachment: fixed;
-  background-color: var(--bg);
+  transition: background-image 0.45s ease;
+}
+
+/*
+  Sender (visitor) background — soft lavender so the visitor knows they
+  are entering someone else's inbox. Lumo stays warm; everything else
+  (cards, charcoal text, coral CTA) is unchanged.
+*/
+body.sender-bg {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(196, 178, 226, 0.5) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 35% at 100% 0%, rgba(220, 200, 232, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(168, 148, 210, 0.18) 0%, transparent 60%);
 }
 
 #root {
