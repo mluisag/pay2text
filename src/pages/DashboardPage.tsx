@@ -240,6 +240,18 @@ function DashboardPage() {
                 >
                   {m.messageText}
                 </p>
+                {m.replyTo && (
+                  <p
+                    style={{
+                      margin: "0 0 0.6rem",
+                      fontSize: "0.85rem",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    <span style={{ color: "var(--text-subtle)" }}>reply to: </span>
+                    <span style={{ color: "var(--text)", fontWeight: 500 }}>{m.replyTo}</span>
+                  </p>
+                )}
                 <div style={messageMetaRow}>
                   <span
                     title={m.senderAddress}

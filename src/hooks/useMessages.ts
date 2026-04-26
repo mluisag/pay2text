@@ -9,6 +9,7 @@ export type Message = {
   amountAtomic: string
   priceUsd: number
   messageText: string
+  replyTo?: string
   txHash?: string
   timestamp: string
   isDemo?: boolean

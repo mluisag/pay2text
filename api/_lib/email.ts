@@ -11,6 +11,7 @@ export type SendMessageEmailInput = {
   amountDisplay: string
   senderAddress: string
   messageText: string
+  replyTo?: string
 }
 
 /**
@@ -30,29 +31,34 @@ export async function sendMessageEmail(
     return { sent: false, reason: 'resend_not_configured' }
   }
 
-  const { toEmail, intentLabel, amountDisplay, senderAddress, messageText } = input
+  const { toEmail, intentLabel, amountDisplay, senderAddress, messageText, replyTo } = input
   const dashboardUrl = 'https://pay2text.xyz/dashboard'
   const senderShort =
     senderAddress.length > 14
       ? `${senderAddress.slice(0, 6)}…${senderAddress.slice(-4)}`
       : senderAddress
 
-  const text = [
+  const textLines = [
     `Someone paid ${amountDisplay} to send you a message.`,
     '',
     `Reason: ${intentLabel}`,
     '',
     `From: ${senderShort}`,
-    '',
-    messageText,
-    '',
-    `View in dashboard: ${dashboardUrl}`,
-    '',
-    '—',
-    'Lumo',
-  ].join('\n')
+  ]
+  if (replyTo) {
+    textLines.push('', `Reply to: ${replyTo}`)
+  }
+  textLines.push('', messageText, '', `View in dashboard: ${dashboardUrl}`, '', '—', 'Lumo')
+  const text = textLines.join('\n')
 
-  const html = renderHtml({ intentLabel, amountDisplay, senderShort, messageText, dashboardUrl })
+  const html = renderHtml({
+    intentLabel,
+    amountDisplay,
+    senderShort,
+    messageText,
+    dashboardUrl,
+    replyTo,
+  })
 
   try {
     console.log(`[email] calling Resend SDK for ${toEmail}…`)
@@ -81,8 +87,14 @@ function renderHtml(args: {
   senderShort: string
   messageText: string
   dashboardUrl: string
+  replyTo?: string
 }): string {
   const escapedMessage = escapeHtml(args.messageText)
+  const replyToBlock = args.replyTo
+    ? `
+    <p style="margin:0 0 4px;font-size:13px;color:#777;">Reply to</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#222;">${escapeHtml(args.replyTo)}</p>`
+    : ''
   return `<!doctype html>
 <html>
 <body style="margin:0;padding:24px 16px;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222;">
@@ -94,7 +106,7 @@ function renderHtml(args: {
 
     <p style="margin:0 0 4px;font-size:13px;color:#777;">From</p>
     <p style="margin:0 0 16px;font-size:14px;color:#222;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${escapeHtml(args.senderShort)}</p>
-
+${replyToBlock}
     <p style="margin:0 0 4px;font-size:13px;color:#777;">Message</p>
     <p style="margin:0 0 22px;padding:14px 16px;background:#f5f5f5;border-radius:10px;white-space:pre-wrap;font-size:15px;color:#222;">${escapedMessage}</p>
 

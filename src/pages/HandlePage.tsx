@@ -71,6 +71,7 @@ function HandlePage() {
   const [step, setStep] = useState<Step>("pick")
   const [intent, setIntent] = useState<Intent | null>(null)
   const [message, setMessage] = useState("")
+  const [replyTo, setReplyTo] = useState("")
   const [sending, setSending] = useState(false)
   const [error, setError] = useState("")
 
@@ -115,6 +116,7 @@ function HandlePage() {
           handle: creator.handle,
           intentId: intent.id,
           message: message.trim(),
+          replyTo: replyTo.trim() || undefined,
         }),
       })
 
@@ -160,6 +162,7 @@ function HandlePage() {
             setStep("pick")
             setIntent(null)
             setMessage("")
+            setReplyTo("")
             setError("")
           }}
           style={ghostButton}
@@ -200,63 +203,50 @@ function HandlePage() {
         </button>
 
         <p style={lumoLine}>
-          Got it. The toll is{" "}
+          Got it. The toll for{" "}
+          <strong style={{ color: "var(--text)" }}>@{creator.handle}</strong> is{" "}
           <span style={{ color: "var(--accent)", fontWeight: 600 }}>
             {intent.displayPrice}
           </span>
           . What do you want to say?
         </p>
 
-        {!activeWallet && ext.isAvailable && (
-          <button
-            type="button"
-            onClick={() => ext.connect()}
-            disabled={ext.isConnecting}
-            style={connectShortcut}
-          >
-            {ext.isConnecting
-              ? "Connecting wallet…"
-              : "Already have a wallet? Connect now →"}
-          </button>
-        )}
-
-        <div className="surface" style={{ padding: "0.85rem", width: "100%", marginBottom: "0.6rem" }}>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
-            autoFocus
-            rows={6}
-            placeholder="Write your message…"
-            disabled={sending}
-            style={textareaStyle}
-          />
-        </div>
-
-        <div style={metaRow}>
-          <span>
-            {activeWallet && senderShort ? (
+        {/* Inline wallet status — replaces the prominent auth block when signed in */}
+        {activeWallet ? (
+          <div style={inlineSignedInBar}>
+            {activeWallet.source === "cdp" && cdpIdentity ? (
               <>
-                paying from {senderShort}
-                {activeWallet.source === "external" ? " (extension)" : ""} → @{creator.handle}
+                Signed in as{" "}
+                <span style={{ color: "var(--text)", fontWeight: 500 }}>{cdpIdentity}</span>
+                <span aria-hidden="true"> · </span>
+                <button type="button" onClick={() => void signOut()} style={tinyLink}>
+                  Sign out
+                </button>
               </>
             ) : (
-              <>for @{creator.handle}</>
+              <>
+                Connected{" "}
+                <span style={{ color: "var(--text)", fontWeight: 500, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                  {senderShort}
+                </span>
+                <span aria-hidden="true"> · </span>
+                <button type="button" onClick={() => ext.disconnect()} style={tinyLink}>
+                  Disconnect
+                </button>
+              </>
             )}
-          </span>
-          <span style={{ fontVariantNumeric: "tabular-nums" }}>
-            {message.length}/{MAX_MESSAGE_LENGTH}
-          </span>
-        </div>
-
-        {!activeWallet && (
-          <div className="surface" style={authBlock}>
-            <p style={{ margin: "0 0 0.4rem", fontSize: "1rem", color: "var(--text)", fontWeight: 500 }}>
+          </div>
+        ) : (
+          <div style={prominentAuthBlock}>
+            <p style={{ margin: "0 0 0.4rem", fontSize: "1.05rem", color: "var(--text)", fontWeight: 600 }}>
               Sign in to pay the toll
             </p>
-            <p style={{ margin: "0 0 0.85rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+            <p style={{ margin: "0 0 1rem", fontSize: "0.88rem", color: "var(--text-muted)" }}>
               We'll create a Lumo wallet for you automatically.
             </p>
-            <AuthButton />
+            <div style={authButtonScale}>
+              <AuthButton />
+            </div>
 
             <div style={dividerRow}>
               <span style={dividerLine} />
@@ -288,19 +278,56 @@ function HandlePage() {
           </div>
         )}
 
-        {activeWallet && (
-          <div style={{ width: "100%", marginBottom: "0.85rem", textAlign: "right" }}>
-            {activeWallet.source === "external" ? (
-              <button type="button" onClick={() => ext.disconnect()} style={tinyLink}>
-                disconnect wallet
-              </button>
-            ) : cdpSignedIn ? (
-              <span style={{ fontSize: "0.75rem", color: "var(--text-subtle)" }}>
-                signed in via Lumo wallet
-              </span>
-            ) : null}
-          </div>
-        )}
+        <div className="surface" style={{ padding: "0.85rem 1rem", width: "100%", marginBottom: "0.6rem" }}>
+          <label style={{ display: "block" }}>
+            <span
+              style={{
+                display: "block",
+                fontSize: "0.78rem",
+                color: "var(--text-muted)",
+                marginBottom: "0.3rem",
+                letterSpacing: "0.01em",
+              }}
+            >
+              Reply to (optional)
+            </span>
+            <input
+              type="text"
+              value={replyTo}
+              onChange={(e) => setReplyTo(e.target.value.slice(0, 200))}
+              placeholder="email or phone — so they can reach you back"
+              disabled={sending}
+              style={replyToInput}
+            />
+          </label>
+        </div>
+
+        <div className="surface" style={{ padding: "0.85rem", width: "100%", marginBottom: "0.6rem" }}>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+            rows={6}
+            placeholder="Write your message…"
+            disabled={sending}
+            style={textareaStyle}
+          />
+        </div>
+
+        <div style={metaRow}>
+          <span>
+            {activeWallet && senderShort ? (
+              <>
+                paying from {senderShort}
+                {activeWallet.source === "external" ? " (extension)" : ""}
+              </>
+            ) : (
+              <>not signed in yet</>
+            )}
+          </span>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>
+            {message.length}/{MAX_MESSAGE_LENGTH}
+          </span>
+        </div>
 
         {error && (
           <p style={errorText}>
@@ -324,10 +351,6 @@ function HandlePage() {
         >
           {sending ? "Lumo is checking…" : `Send for ${intent.displayPrice}`}
         </button>
-
-        {cdpSignedIn && cdpIdentity && (
-          <SenderIdentityBar identity={cdpIdentity} onSignOut={signOut} />
-        )}
       </main>
     )
   }
@@ -499,11 +522,44 @@ const metaRow: React.CSSProperties = {
   color: "var(--text-subtle)",
 }
 
-const authBlock: React.CSSProperties = {
+const prominentAuthBlock: React.CSSProperties = {
   width: "100%",
-  padding: "1.25rem 1.25rem 1.5rem",
+  padding: "1.5rem 1.4rem 1.7rem",
   marginBottom: "1rem",
   textAlign: "left",
+  border: "2px solid var(--accent)",
+  borderRadius: "var(--radius-lg)",
+  background: "var(--card)",
+  backdropFilter: "blur(14px) saturate(1.05)",
+  WebkitBackdropFilter: "blur(14px) saturate(1.05)",
+  boxShadow: "0 6px 24px rgba(232, 119, 91, 0.18)",
+}
+
+const inlineSignedInBar: React.CSSProperties = {
+  width: "100%",
+  marginBottom: "0.85rem",
+  padding: "0.55rem 0.85rem",
+  fontSize: "0.82rem",
+  color: "var(--text-muted)",
+  background: "rgba(255, 252, 247, 0.65)",
+  border: "1px solid var(--line)",
+  borderRadius: "var(--radius)",
+  textAlign: "center",
+}
+
+const authButtonScale: React.CSSProperties = {
+  fontSize: "1.05rem",
+}
+
+const replyToInput: React.CSSProperties = {
+  width: "100%",
+  border: "none",
+  outline: "none",
+  background: "transparent",
+  fontSize: "0.95rem",
+  color: "var(--text)",
+  fontFamily: "inherit",
+  padding: "0.2rem 0",
 }
 
 const dividerRow: React.CSSProperties = {
@@ -524,21 +580,6 @@ const dividerText: React.CSSProperties = {
   fontSize: "0.78rem",
   letterSpacing: "0.05em",
   textTransform: "uppercase",
-}
-
-const connectShortcut: React.CSSProperties = {
-  alignSelf: "flex-start",
-  background: "none",
-  border: "none",
-  padding: "0.35rem 0",
-  margin: "-0.25rem 0 0.85rem",
-  color: "var(--text-muted)",
-  cursor: "pointer",
-  fontSize: "0.85rem",
-  fontFamily: "inherit",
-  textDecoration: "underline",
-  textDecorationColor: "var(--line-strong)",
-  textUnderlineOffset: "3px",
 }
 
 const connectWalletButton: React.CSSProperties = {

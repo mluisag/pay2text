@@ -23,6 +23,7 @@ type StoredMessage = {
   amountAtomic: string
   priceUsd: number
   messageText: string
+  replyTo?: string
   txHash?: string
   timestamp: string
 }
@@ -51,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { handle, intentId, message } = req.body ?? {}
+    const { handle, intentId, message, replyTo } = req.body ?? {}
 
     if (
       typeof handle !== 'string' ||
@@ -60,6 +61,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ) {
       return res.status(400).json({ error: 'invalid_body' })
     }
+
+    const trimmedReplyTo =
+      typeof replyTo === 'string' && replyTo.trim().length > 0 && replyTo.trim().length <= 200
+        ? replyTo.trim()
+        : undefined
 
     const trimmedMessage = message.trim()
     if (trimmedMessage.length === 0 || trimmedMessage.length > 1000) {
@@ -140,6 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       amountAtomic: atomicAmount.toString(),
       priceUsd: intent.priceUsd,
       messageText: trimmedMessage,
+      replyTo: trimmedReplyTo,
       txHash: settleResult.transaction,
       timestamp: new Date().toISOString(),
     }
@@ -165,6 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         amountDisplay: intent.displayPrice,
         senderAddress: messageRecord.senderAddress,
         messageText: messageRecord.messageText,
+        replyTo: messageRecord.replyTo,
       })
       if (emailResult.sent) {
         console.log(
