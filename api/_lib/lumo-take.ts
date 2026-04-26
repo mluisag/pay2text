@@ -9,6 +9,7 @@ const SYSTEM_PROMPT =
 
 const MODEL = 'claude-haiku-4-5-20251001'
 const MAX_TOKENS = 90
+const DEFAULT_TIMEOUT_MS = 1500
 
 /**
  * Asks Lumo (Claude Haiku) to read a paid message and produce a single-sentence
@@ -19,6 +20,7 @@ export async function generateLumoTake(args: {
   intentLabel: string
   messageText: string
   replyTo?: string
+  timeoutMs?: number
 }): Promise<string | null> {
   if (!anthropic) {
     console.warn('[lumo-take] ANTHROPIC_API_KEY not set — skipping take.')
@@ -30,29 +32,39 @@ export async function generateLumoTake(args: {
     (args.replyTo ? `Reply to: ${args.replyTo}\n` : '') +
     `\nMessage:\n${args.messageText}`
 
-  try {
-    const response = await anthropic.messages.create({
+  const timeoutMs = args.timeoutMs ?? DEFAULT_TIMEOUT_MS
+
+  // Race the Anthropic call against a hard timeout so a slow/down model
+  // never delays the payment response. The take is best-effort — if it
+  // misses the window, the message saves without one.
+  const callPromise = anthropic.messages
+    .create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userContent }],
     })
-
-    const text = response.content
-      .filter((c): c is Anthropic.TextBlock => c.type === 'text')
-      .map((c) => c.text)
-      .join('')
-      .trim()
-
-    if (!text) {
-      console.warn('[lumo-take] empty response from Anthropic')
+    .then((response) => {
+      const text = response.content
+        .filter((c): c is Anthropic.TextBlock => c.type === 'text')
+        .map((c) => c.text)
+        .join('')
+        .trim()
+      if (!text) return null
+      // Strip any leading "Lumo's take:" the model occasionally adds.
+      return text.replace(/^["']?(?:lumo['']?s take:?\s*)?["']?/i, '').trim()
+    })
+    .catch((err) => {
+      console.warn('[lumo-take] Anthropic call failed:', err)
       return null
-    }
+    })
 
-    // Strip any leading "Lumo's take:" the model occasionally adds.
-    return text.replace(/^["']?(?:lumo['']?s take:?\s*)?["']?/i, '').trim()
-  } catch (err) {
-    console.warn('[lumo-take] Anthropic call failed:', err)
-    return null
-  }
+  const timeoutPromise = new Promise<null>((resolve) =>
+    setTimeout(() => {
+      console.warn(`[lumo-take] timed out after ${timeoutMs}ms — skipping`)
+      resolve(null)
+    }, timeoutMs),
+  )
+
+  return Promise.race([callPromise, timeoutPromise])
 }
