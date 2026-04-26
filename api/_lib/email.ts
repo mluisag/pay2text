@@ -24,7 +24,9 @@ export async function sendMessageEmail(
   input: SendMessageEmailInput,
 ): Promise<{ sent: boolean; reason?: string }> {
   if (!resend) {
-    console.warn('Resend not configured — skipping email forward.')
+    console.warn(
+      '[email] RESEND_API_KEY is not set in this environment — cannot send.',
+    )
     return { sent: false, reason: 'resend_not_configured' }
   }
 
@@ -53,7 +55,8 @@ export async function sendMessageEmail(
   const html = renderHtml({ intentLabel, amountDisplay, senderShort, messageText, dashboardUrl })
 
   try {
-    const { error } = await resend.emails.send({
+    console.log(`[email] calling Resend SDK for ${toEmail}…`)
+    const { error, data } = await resend.emails.send({
       from: 'Lumo <onboarding@resend.dev>',
       to: toEmail,
       subject: 'Lumo let someone in: a new message for you',
@@ -61,12 +64,13 @@ export async function sendMessageEmail(
       html,
     })
     if (error) {
-      console.error('Resend send error:', error)
+      console.error('[email] Resend returned an error:', error)
       return { sent: false, reason: String(error.message ?? error) }
     }
+    console.log(`[email] Resend accepted, id=${data?.id ?? 'unknown'}`)
     return { sent: true }
   } catch (err) {
-    console.error('Resend threw:', err)
+    console.error('[email] Resend SDK threw:', err)
     return { sent: false, reason: err instanceof Error ? err.message : 'unknown' }
   }
 }

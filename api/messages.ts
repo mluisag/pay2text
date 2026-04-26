@@ -145,9 +145,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     await redis.lpush(`messages:${creator.handle}`, JSON.stringify(messageRecord))
+    console.log(
+      `[messages] saved message id=${messageRecord.id} for @${creator.handle}, intent=${intent.id}, amount=${intent.displayPrice}`,
+    )
 
     // Email forwarding is best-effort — never block the success response on it.
-    if (creator.email) {
+    if (!creator.email) {
+      console.warn(
+        `[messages] no email saved for @${creator.handle} — skipping email forward (creator must enter email at /onboard)`,
+      )
+    } else {
+      console.log(
+        `[messages] attempting email forward to ${creator.email} for @${creator.handle}`,
+      )
       const emailResult = await sendMessageEmail({
         toEmail: creator.email,
         recipientHandle: creator.handle,
@@ -156,9 +166,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         senderAddress: messageRecord.senderAddress,
         messageText: messageRecord.messageText,
       })
-      if (!emailResult.sent) {
+      if (emailResult.sent) {
+        console.log(
+          `[messages] email forward to ${creator.email} sent successfully`,
+        )
+      } else {
         console.warn(
-          `Email forward to ${creator.email} skipped or failed:`,
+          `[messages] email forward to ${creator.email} FAILED:`,
           emailResult.reason,
         )
       }
