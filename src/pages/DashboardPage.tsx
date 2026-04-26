@@ -1,13 +1,16 @@
 import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks"
 import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
 import { QRCodeSVG } from "qrcode.react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { Navigate } from "react-router-dom"
 
 import Lumo from "../components/Lumo"
 import Loading from "../Loading"
+import SendFlow from "../components/SendFlow"
 import { useCreatorProfile } from "../hooks/useCreatorProfile"
 import { useMessages } from "../hooks/useMessages"
+
+type Mode = "receive" | "send"
 
 function DashboardPage() {
   const { isSignedIn } = useIsSignedIn()
@@ -15,6 +18,37 @@ function DashboardPage() {
   const { creator, isLoading } = useCreatorProfile()
   const { messages, isLoading: messagesLoading } = useMessages(creator?.handle)
   const [copiedField, setCopiedField] = useState<"link" | "address" | null>(null)
+
+  // Send/Receive toggle and Send-mode handle entry
+  const [mode, setMode] = useState<Mode>("receive")
+  const [sendHandleInput, setSendHandleInput] = useState("")
+  const [sendTarget, setSendTarget] = useState<string | null>(null)
+
+  // Background follows the active mode — peach for Receive, lavender for Send.
+  useEffect(() => {
+    if (mode === "send") {
+      document.body.classList.add("sender-bg")
+    } else {
+      document.body.classList.remove("sender-bg")
+    }
+    return () => {
+      document.body.classList.remove("sender-bg")
+    }
+  }, [mode])
+
+  const switchMode = (next: Mode) => {
+    if (next === "receive") {
+      setSendTarget(null)
+      setSendHandleInput("")
+    }
+    setMode(next)
+  }
+
+  const onSendHandleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = sendHandleInput.trim().toLowerCase().replace(/^@/, "")
+    if (trimmed.length >= 3) setSendTarget(trimmed)
+  }
 
   const displayMessages = messages
 
@@ -86,6 +120,79 @@ function DashboardPage() {
         </div>
         <AuthButton />
       </header>
+
+      <div role="tablist" aria-label="Send or receive" style={tabsRowStyle}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "receive"}
+          onClick={() => switchMode("receive")}
+          style={tabButtonStyle(mode === "receive")}
+        >
+          Receive
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "send"}
+          onClick={() => switchMode("send")}
+          style={tabButtonStyle(mode === "send")}
+        >
+          Send
+        </button>
+      </div>
+
+      {mode === "send" ? (
+        <section style={{ width: "100%" }}>
+          {!sendTarget ? (
+            <form onSubmit={onSendHandleSubmit} className="surface" style={sendHandleCardStyle}>
+              <p style={{ ...fieldLabelStyle, marginBottom: "0.4rem" }}>Send a message to</p>
+              <div style={sendHandleRow}>
+                <span style={{ color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                  pay2text.xyz/
+                </span>
+                <input
+                  type="text"
+                  value={sendHandleInput}
+                  onChange={(e) =>
+                    setSendHandleInput(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ""))
+                  }
+                  placeholder="theirhandle"
+                  maxLength={32}
+                  autoFocus
+                  style={sendHandleInputStyle}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={sendHandleInput.trim().length < 3}
+                style={openSendButton(sendHandleInput.trim().length < 3)}
+              >
+                Knock on their door →
+              </button>
+            </form>
+          ) : (
+            <div style={{ width: "100%" }}>
+              <button
+                type="button"
+                onClick={() => setSendTarget(null)}
+                style={changeRecipientLink}
+              >
+                ← change recipient
+              </button>
+              <SendFlow handle={sendTarget} compact />
+            </div>
+          )}
+        </section>
+      ) : (
+        <ReceiveContent />
+      )}
+    </main>
+  )
+
+  function ReceiveContent() {
+    return (
+      <>
 
       <section className="surface" style={shareCardStyle}>
         <p style={fieldLabelStyle}>Your shareable link</p>
@@ -307,8 +414,9 @@ function DashboardPage() {
           </ul>
         )}
       </section>
-    </main>
-  )
+      </>
+    )
+  }
 }
 
 /**
@@ -349,6 +457,89 @@ function formatRelative(iso: string): string {
 }
 
 const cardPadding: React.CSSProperties = { padding: "1.1rem 1.25rem" }
+
+// --- Send/Receive toggle + Send composer ---
+
+const tabsRowStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignSelf: "flex-start",
+  gap: "0.25rem",
+  padding: "0.25rem",
+  marginBottom: "1.25rem",
+  borderRadius: "999px",
+  background: "rgba(255, 252, 247, 0.7)",
+  border: "1px solid var(--line)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+}
+
+function tabButtonStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "0.5rem 1.1rem",
+    borderRadius: "999px",
+    border: "none",
+    background: active ? "var(--accent)" : "transparent",
+    color: active ? "var(--accent-on)" : "var(--text-muted)",
+    fontWeight: active ? 600 : 500,
+    fontSize: "0.9rem",
+    cursor: "pointer",
+    minWidth: "84px",
+    transition: "background 0.15s ease, color 0.15s ease",
+  }
+}
+
+const sendHandleCardStyle: React.CSSProperties = {
+  padding: "1.5rem 1.4rem",
+  textAlign: "left",
+  marginBottom: "1rem",
+}
+
+const sendHandleRow: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.1rem",
+  padding: "0.55rem 0.75rem",
+  border: "1px solid var(--line-strong)",
+  borderRadius: "var(--radius)",
+  marginBottom: "1rem",
+  background: "var(--card-solid)",
+}
+
+const sendHandleInputStyle: React.CSSProperties = {
+  flex: 1,
+  border: "none",
+  outline: "none",
+  background: "transparent",
+  fontSize: "1rem",
+  color: "var(--text)",
+  padding: "0.4rem 0",
+}
+
+function openSendButton(disabled: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    padding: "0.85rem",
+    borderRadius: "var(--radius)",
+    border: "none",
+    background: disabled ? "var(--text-subtle)" : "var(--accent)",
+    color: "var(--accent-on)",
+    fontSize: "0.95rem",
+    fontWeight: 600,
+    cursor: disabled ? "not-allowed" : "pointer",
+    minHeight: "48px",
+    boxShadow: disabled ? "none" : "var(--shadow)",
+  }
+}
+
+const changeRecipientLink: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  padding: 0,
+  marginBottom: "0.75rem",
+  color: "var(--text-muted)",
+  cursor: "pointer",
+  fontSize: "0.85rem",
+}
 
 const shareCardStyle: React.CSSProperties = {
   padding: "1.25rem 1.4rem",
