@@ -10,6 +10,7 @@ export type Message = {
   priceUsd: number
   messageText: string
   replyTo?: string
+  lumoTake?: string
   txHash?: string
   timestamp: string
   isDemo?: boolean

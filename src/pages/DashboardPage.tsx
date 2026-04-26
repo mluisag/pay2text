@@ -503,6 +503,17 @@ function MessageBody({ m, senderCount, truncate, hideIntentLabel }: MessageBodyP
           {formatUsd(m.priceUsd)}
         </span>
       </div>
+      {m.lumoTake && (
+        <p style={lumoTakeStyle}>
+          <span style={lumoTakeIconStyle} aria-hidden="true">
+            ✦
+          </span>
+          <span style={{ color: "var(--text-muted)", fontWeight: 500, fontStyle: "normal" }}>
+            Lumo's take:
+          </span>{" "}
+          {m.lumoTake}
+        </p>
+      )}
       <p
         style={{
           margin: "0 0 0.6rem",
@@ -675,6 +686,25 @@ const groupListStyle: React.CSSProperties = {
 const groupListItemStyle: React.CSSProperties = {
   padding: "1rem 1.25rem",
   borderBottom: "1px solid var(--line)",
+}
+
+const lumoTakeStyle: React.CSSProperties = {
+  margin: "0 0 0.7rem",
+  padding: "0.55rem 0.75rem",
+  background: "rgba(252, 229, 220, 0.5)",
+  borderLeft: "2px solid var(--accent)",
+  borderRadius: "0.4rem",
+  fontSize: "0.85rem",
+  fontStyle: "italic",
+  color: "var(--text)",
+  lineHeight: 1.5,
+}
+
+const lumoTakeIconStyle: React.CSSProperties = {
+  color: "var(--accent)",
+  fontStyle: "normal",
+  marginRight: "0.4rem",
+  fontSize: "0.95rem",
 }
 
 const repeatBadgeStyle: React.CSSProperties = {

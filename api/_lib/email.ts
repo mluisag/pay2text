@@ -12,6 +12,7 @@ export type SendMessageEmailInput = {
   senderAddress: string
   messageText: string
   replyTo?: string
+  lumoTake?: string
 }
 
 /**
@@ -31,7 +32,8 @@ export async function sendMessageEmail(
     return { sent: false, reason: 'resend_not_configured' }
   }
 
-  const { toEmail, intentLabel, amountDisplay, senderAddress, messageText, replyTo } = input
+  const { toEmail, intentLabel, amountDisplay, senderAddress, messageText, replyTo, lumoTake } =
+    input
   const dashboardUrl = 'https://pay2text.xyz/dashboard'
   const senderShort =
     senderAddress.length > 14
@@ -48,6 +50,9 @@ export async function sendMessageEmail(
   if (replyTo) {
     textLines.push('', `Reply to: ${replyTo}`)
   }
+  if (lumoTake) {
+    textLines.push('', `Lumo's take: ${lumoTake}`)
+  }
   textLines.push('', messageText, '', `View in dashboard: ${dashboardUrl}`, '', '—', 'Lumo')
   const text = textLines.join('\n')
 
@@ -58,6 +63,7 @@ export async function sendMessageEmail(
     messageText,
     dashboardUrl,
     replyTo,
+    lumoTake,
   })
 
   try {
@@ -88,12 +94,19 @@ function renderHtml(args: {
   messageText: string
   dashboardUrl: string
   replyTo?: string
+  lumoTake?: string
 }): string {
   const escapedMessage = escapeHtml(args.messageText)
   const replyToBlock = args.replyTo
     ? `
     <p style="margin:0 0 4px;font-size:13px;color:#777;">Reply to</p>
     <p style="margin:0 0 16px;font-size:14px;color:#222;">${escapeHtml(args.replyTo)}</p>`
+    : ''
+  const lumoTakeBlock = args.lumoTake
+    ? `
+    <p style="margin:0 0 16px;padding:12px 14px;background:#fce5dc;border-radius:10px;font-style:italic;color:#1f1b16;font-size:14px;line-height:1.5;">
+      <span style="color:#e8775b;font-style:normal;font-weight:600;margin-right:6px;">✦ Lumo's take</span>${escapeHtml(args.lumoTake)}
+    </p>`
     : ''
   return `<!doctype html>
 <html>
@@ -106,7 +119,7 @@ function renderHtml(args: {
 
     <p style="margin:0 0 4px;font-size:13px;color:#777;">From</p>
     <p style="margin:0 0 16px;font-size:14px;color:#222;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">${escapeHtml(args.senderShort)}</p>
-${replyToBlock}
+${replyToBlock}${lumoTakeBlock}
     <p style="margin:0 0 4px;font-size:13px;color:#777;">Message</p>
     <p style="margin:0 0 22px;padding:14px 16px;background:#f5f5f5;border-radius:10px;white-space:pre-wrap;font-size:15px;color:#222;">${escapedMessage}</p>
 

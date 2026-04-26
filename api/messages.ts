@@ -5,6 +5,7 @@ import { settleResponseHeader, type PaymentRequirements } from 'x402/types'
 
 import { redis, type Creator } from './_lib/redis.js'
 import { sendMessageEmail } from './_lib/email.js'
+import { generateLumoTake } from './_lib/lumo-take.js'
 import { INTENTS, priceUsdToAtomicUsdc } from '../src/intents.js'
 
 const FACILITATOR_URL = 'https://x402.org/facilitator'
@@ -24,6 +25,7 @@ type StoredMessage = {
   priceUsd: number
   messageText: string
   replyTo?: string
+  lumoTake?: string
   txHash?: string
   timestamp: string
 }
@@ -137,6 +139,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? String(payload.payload.authorization.from)
         : ''
 
+    // Ask Lumo (Claude Haiku) to read the message and produce a one-sentence
+    // assessment for the dashboard. Best-effort — never blocks the success
+    // response if Anthropic is slow or down (returns null on any failure).
+    const lumoTake = await generateLumoTake({
+      intentLabel: intent.label,
+      messageText: trimmedMessage,
+      replyTo: trimmedReplyTo,
+    })
+    if (lumoTake) {
+      console.log(`[messages] Lumo take generated (${lumoTake.length} chars)`)
+    }
+
     const messageRecord: StoredMessage = {
       id: crypto.randomUUID(),
       recipientHandle: creator.handle,
@@ -147,6 +161,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       priceUsd: intent.priceUsd,
       messageText: trimmedMessage,
       replyTo: trimmedReplyTo,
+      lumoTake: lumoTake ?? undefined,
       txHash: settleResult.transaction,
       timestamp: new Date().toISOString(),
     }
@@ -173,6 +188,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         senderAddress: messageRecord.senderAddress,
         messageText: messageRecord.messageText,
         replyTo: messageRecord.replyTo,
+        lumoTake: messageRecord.lumoTake,
       })
       if (emailResult.sent) {
         console.log(
