@@ -1,23 +1,10 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { useFacilitator } from 'x402/verify'
-import { decodePayment } from 'x402/schemes'
-import { settleResponseHeader, type PaymentRequirements } from 'x402/types'
+import { Credential, Receipt } from 'mppx'
 
 import { redis, type Creator } from './_lib/redis.js'
 import { sendMessageEmail } from './_lib/email.js'
 import { generateLumoTake } from './_lib/lumo-take.js'
-import { INTENTS, priceUsdToAtomicUsdc } from '../src/intents.js'
-
-const FACILITATOR_URL = 'https://x402.org/facilitator'
-// NOTE: x402 layer is intentionally still wired in Phase 2 — it will not
-// successfully verify on Tempo (the x402.org facilitator doesn't know
-// Tempo). Phase 3 replaces this entire flow with mppx. Strings updated
-// here for coherence so 402 challenges aren't misleading.
-const NETWORK = 'tempo-testnet'
-// pathUSD on Tempo testnet (TIP-20, 6 decimals — same as USDC)
-const PATHUSD_TESTNET = '0x20c0000000000000000000000000000000000000'
-
-const facilitator = useFacilitator({ url: FACILITATOR_URL })
+import { mppx } from './_lib/mppx.js'
+import { INTENTS } from '../src/intents.js'
 
 type StoredMessage = {
   id: string
@@ -34,38 +21,48 @@ type StoredMessage = {
   timestamp: string
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method === 'GET') {
+export default async function handler(request: Request): Promise<Response> {
+  const url = new URL(request.url)
+
+  if (request.method === 'GET') {
     try {
-      const handle = typeof req.query.handle === 'string' ? req.query.handle : null
-      if (!handle) return res.status(400).json({ error: 'missing_handle' })
+      const handle = url.searchParams.get('handle')
+      if (!handle) return Response.json({ error: 'missing_handle' }, { status: 400 })
 
       const items = await redis.lrange(`messages:${handle.toLowerCase()}`, 0, -1)
-      // Upstash sometimes auto-parses JSON, sometimes returns strings. Handle both.
       const messages = items.map((it) =>
         typeof it === 'string' ? JSON.parse(it) : it,
       )
-      return res.status(200).json({ messages })
+      return Response.json({ messages })
     } catch (err) {
       console.error('messages GET error:', err)
-      return res.status(500).json({ error: 'server_error' })
+      return Response.json({ error: 'server_error' }, { status: 500 })
     }
   }
 
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'GET, POST')
-    return res.status(405).json({ error: 'method_not_allowed' })
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
+      status: 405,
+      headers: { Allow: 'GET, POST', 'Content-Type': 'application/json' },
+    })
   }
 
   try {
-    const { handle, intentId, message, replyTo } = req.body ?? {}
+    const bodyText = await request.text()
+    let body: { handle?: unknown; intentId?: unknown; message?: unknown; replyTo?: unknown }
+    try {
+      body = JSON.parse(bodyText)
+    } catch {
+      return Response.json({ error: 'invalid_body' }, { status: 400 })
+    }
+    const { handle, intentId, message, replyTo } = body
 
     if (
       typeof handle !== 'string' ||
       typeof intentId !== 'string' ||
       typeof message !== 'string'
     ) {
-      return res.status(400).json({ error: 'invalid_body' })
+      return Response.json({ error: 'invalid_body' }, { status: 400 })
     }
 
     const trimmedReplyTo =
@@ -75,77 +72,62 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const trimmedMessage = message.trim()
     if (trimmedMessage.length === 0 || trimmedMessage.length > 1000) {
-      return res.status(400).json({ error: 'invalid_message_length' })
+      return Response.json({ error: 'invalid_message_length' }, { status: 400 })
     }
 
     const creator = await redis.get<Creator>(`creator:${handle.toLowerCase()}`)
-    if (!creator) return res.status(404).json({ error: 'recipient_not_found' })
+    if (!creator) return Response.json({ error: 'recipient_not_found' }, { status: 404 })
 
     const intent = INTENTS.find((i) => i.id === intentId)
-    if (!intent) return res.status(400).json({ error: 'invalid_intent' })
+    if (!intent) return Response.json({ error: 'invalid_intent' }, { status: 400 })
 
-    const atomicAmount = priceUsdToAtomicUsdc(intent.priceUsd)
+    // Reconstruct a Request for mppx (mppx may consume body internally; safer
+    // to give it a fresh one with the bytes we already buffered).
+    const mppxRequest = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body: bodyText,
+    })
 
-    const requirements: PaymentRequirements = {
-      scheme: 'exact',
-      network: NETWORK,
-      maxAmountRequired: atomicAmount.toString(),
-      resource: 'https://pay2text.xyz/api/messages',
+    const result = await mppx.tempo.charge({
+      amount: intent.priceUsd.toFixed(2),
+      recipient: creator.walletAddress,
       description: `${intent.label} for @${creator.handle}`,
-      mimeType: 'application/json',
-      payTo: creator.walletAddress,
-      maxTimeoutSeconds: 60,
-      asset: PATHUSD_TESTNET,
-      extra: {
-        name: 'pathUSD',
-        version: '2',
-      },
+    })(mppxRequest)
+
+    if (result.status === 402) {
+      // Client hasn't paid yet — return the WWW-Authenticate challenge.
+      return result.challenge
     }
 
-    const paymentHeader = req.headers['x-payment']
-    if (!paymentHeader || typeof paymentHeader !== 'string') {
-      return res.status(402).json({
-        x402Version: 1,
-        accepts: [requirements],
-        error: 'payment_required',
-      })
-    }
-
-    let payload
+    // Payment verified. Pull sender + tx hash from the credential and receipt.
+    let senderAddress = ''
     try {
-      payload = decodePayment(paymentHeader)
-    } catch {
-      return res.status(400).json({ error: 'invalid_payment_header' })
+      const cred = Credential.fromRequest(request)
+      // source is a DID like "did:pkh:eip155:42431:0xabc..."
+      const m = cred?.source?.match(/0x[a-fA-F0-9]{40}/)
+      if (m) senderAddress = m[0]
+    } catch (e) {
+      console.warn('[messages] failed to read credential source:', e)
     }
 
-    const verifyResult = await facilitator.verify(payload, requirements)
-    if (!verifyResult.isValid) {
-      return res.status(402).json({
-        x402Version: 1,
-        accepts: [requirements],
-        error: 'payment_invalid',
-        reason: verifyResult.invalidReason,
-      })
+    let txHash: string | undefined
+    try {
+      // Probe the withReceipt response to read the Payment-Receipt header,
+      // which carries the on-chain reference. We'll re-call withReceipt
+      // below on the real success response.
+      const probe = result.withReceipt(new Response())
+      const receiptHeader = probe.headers.get('Payment-Receipt')
+      if (receiptHeader) {
+        const receipt = Receipt.deserialize(receiptHeader)
+        if (receipt.reference) txHash = receipt.reference
+      }
+    } catch (e) {
+      console.warn('[messages] failed to extract receipt:', e)
     }
 
-    const settleResult = await facilitator.settle(payload, requirements)
-    if (!settleResult.success) {
-      return res.status(402).json({
-        x402Version: 1,
-        accepts: [requirements],
-        error: 'payment_settle_failed',
-        reason: settleResult.errorReason,
-      })
-    }
+    const atomicAmount = BigInt(Math.round(intent.priceUsd * 1_000_000))
 
-    const senderAddress =
-      'authorization' in payload.payload && payload.payload.authorization?.from
-        ? String(payload.payload.authorization.from)
-        : ''
-
-    // Ask Lumo (Claude Haiku) to read the message and produce a one-sentence
-    // assessment for the dashboard. Best-effort — never blocks the success
-    // response if Anthropic is slow or down (returns null on any failure).
     const lumoTake = await generateLumoTake({
       intentLabel: intent.label,
       messageText: trimmedMessage,
@@ -166,24 +148,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       messageText: trimmedMessage,
       replyTo: trimmedReplyTo,
       lumoTake: lumoTake ?? undefined,
-      txHash: settleResult.transaction,
+      txHash,
       timestamp: new Date().toISOString(),
     }
 
     await redis.lpush(`messages:${creator.handle}`, JSON.stringify(messageRecord))
     console.log(
-      `[messages] saved message id=${messageRecord.id} for @${creator.handle}, intent=${intent.id}, amount=${intent.displayPrice}`,
+      `[messages] saved id=${messageRecord.id} for @${creator.handle}, intent=${intent.id}, amount=${intent.displayPrice}`,
     )
 
-    // Email forwarding is best-effort — never block the success response on it.
     if (!creator.email) {
       console.warn(
-        `[messages] no email saved for @${creator.handle} — skipping email forward (creator must enter email at /onboard)`,
+        `[messages] no email saved for @${creator.handle} — skipping email forward`,
       )
     } else {
-      console.log(
-        `[messages] attempting email forward to ${creator.email} for @${creator.handle}`,
-      )
       const emailResult = await sendMessageEmail({
         toEmail: creator.email,
         recipientHandle: creator.handle,
@@ -194,11 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         replyTo: messageRecord.replyTo,
         lumoTake: messageRecord.lumoTake,
       })
-      if (emailResult.sent) {
-        console.log(
-          `[messages] email forward to ${creator.email} sent successfully`,
-        )
-      } else {
+      if (!emailResult.sent) {
         console.warn(
           `[messages] email forward to ${creator.email} FAILED:`,
           emailResult.reason,
@@ -206,14 +180,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    res.setHeader('X-PAYMENT-RESPONSE', settleResponseHeader(settleResult))
-    return res.status(200).json({
-      ok: true,
-      messageId: messageRecord.id,
-      txHash: messageRecord.txHash,
-    })
+    return result.withReceipt(
+      Response.json({ ok: true, messageId: messageRecord.id, txHash: messageRecord.txHash }),
+    )
   } catch (err) {
     console.error('messages handler error:', err)
-    return res.status(500).json({ error: 'server_error' })
+    return Response.json({ error: 'server_error' }, { status: 500 })
   }
 }

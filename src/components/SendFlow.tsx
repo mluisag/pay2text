@@ -3,12 +3,11 @@ import {
   useEvmAddress,
   useIsSignedIn,
   useSignOut,
-  useX402,
 } from "@coinbase/cdp-hooks"
 import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
+import { Mppx, tempo } from "mppx/client"
 import { useMemo, useState } from "react"
 import { createWalletClient, custom, publicActions } from "viem"
-import { wrapFetchWithPayment } from "x402-fetch"
 
 import { explorerTxUrl, tempoTestnet } from "../chain"
 import Loading from "../Loading"
@@ -20,7 +19,6 @@ import Lumo from "./Lumo"
 type Step = "pick" | "compose" | "sent"
 
 const MAX_MESSAGE_LENGTH = 1000
-const MAX_PAYMENT_ATOMIC = 11_000_000n
 
 interface Props {
   handle: string | undefined
@@ -41,10 +39,6 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
   const { evmAddress: cdpAddress } = useEvmAddress()
   const { currentUser } = useCurrentUser()
   const { signOut } = useSignOut()
-  const { fetchWithPayment: cdpFetchWithPayment } = useX402({
-    address: cdpAddress ?? undefined,
-    maxValue: MAX_PAYMENT_ATOMIC,
-  })
 
   const ext = useExternalWallet()
 
@@ -59,24 +53,30 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
       ? { source: "cdp", address: cdpAddress }
       : null
 
+  // External-wallet-only on the Tempo build. CDP doesn't issue Tempo
+  // accounts, so a CDP-signed-in user with no external wallet sees the
+  // "Connect your wallet" prompt instead of a payable button.
+  // (Phase 4 will rip the CDP UI path entirely.)
   const fetchWithPayment = useMemo(() => {
-    if (activeWallet?.source === "external" && typeof window !== "undefined" && window.ethereum) {
+    if (
+      activeWallet?.source === "external" &&
+      typeof window !== "undefined" &&
+      window.ethereum
+    ) {
       const client = createWalletClient({
         account: activeWallet.address as `0x${string}`,
         chain: tempoTestnet,
         transport: custom(window.ethereum as Parameters<typeof custom>[0]),
       }).extend(publicActions)
-      return wrapFetchWithPayment(
-        fetch,
-        client as unknown as Parameters<typeof wrapFetchWithPayment>[1],
-        MAX_PAYMENT_ATOMIC,
-      )
-    }
-    if (activeWallet?.source === "cdp") {
-      return cdpFetchWithPayment
+
+      const mppx = Mppx.create({
+        methods: [tempo({ account: client.account })],
+        polyfill: false,
+      })
+      return mppx.fetch
     }
     return null
-  }, [activeWallet?.source, activeWallet?.address, cdpFetchWithPayment])
+  }, [activeWallet?.source, activeWallet?.address])
 
   const [step, setStep] = useState<Step>("pick")
   const [intent, setIntent] = useState<Intent | null>(null)
