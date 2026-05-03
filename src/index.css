@@ -1,0 +1,310 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap");
+
+/* -------------------------------------------------------------------------
+   Design tokens — pay2text.xyz ("calm against the noise")
+   ------------------------------------------------------------------------- */
+
+:root {
+  /* Surface */
+  --bg: #fbf6f0;
+  --bg-soft: #f8eee3;
+  --card: rgba(255, 252, 247, 0.72);
+  --card-solid: #fffcf7;
+  --line: rgba(31, 27, 22, 0.08);
+  --line-strong: rgba(31, 27, 22, 0.16);
+
+  /* Type */
+  --text: #1f1b16;
+  --text-muted: #7a7068;
+  --text-subtle: #a59c92;
+
+  /* Accent — warm coral */
+  --accent: #e8775b;
+  --accent-hover: #d35c41;
+  --accent-soft: #fce5dc;
+  --accent-on: #ffffff;
+
+  /* Demo / warning */
+  --warm: #b88800;
+
+  /* Lumo gradient stops */
+  --lumo-stop-1: #fff3d6;
+  --lumo-stop-2: #ffd197;
+  --lumo-stop-3: #ff8a64;
+  --lumo-stop-4: #e8543a;
+  --lumo-glow: rgba(255, 152, 100, 0.45);
+
+  /* Shape */
+  --radius-sm: 0.55rem;
+  --radius: 0.85rem;
+  --radius-lg: 1.25rem;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.05);
+  --shadow: 0 4px 18px rgba(31, 27, 22, 0.06), 0 1px 3px rgba(31, 27, 22, 0.04);
+  --shadow-lg: 0 12px 36px rgba(31, 27, 22, 0.08);
+
+  /* Type system */
+  --font-sans: "Inter Tight", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  color-scheme: light;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* -------------------------------------------------------------------------
+   CDP component theme bridge — keeps the AuthButton in our palette
+   ------------------------------------------------------------------------- */
+
+:root {
+  --cdp-example-page-bg-color: var(--bg);
+  --cdp-example-page-bg-alt-color: var(--bg-soft);
+  --cdp-example-bg-overlay-color: rgba(31, 27, 22, 0.35);
+  --cdp-example-bg-skeleton-color: rgba(31, 27, 22, 0.08);
+  --cdp-example-text-color: var(--text);
+  --cdp-example-text-secondary-color: var(--text-muted);
+  --cdp-example-accent-color: var(--accent);
+  --cdp-example-accent-hover-color: var(--accent-hover);
+  --cdp-example-accent-foreground-color: var(--accent-on);
+  --cdp-example-bg-low-contrast-color: var(--bg-soft);
+  --cdp-example-cdp-page-bg-color: var(--card-solid);
+  --cdp-example-cdp-page-bg-alt-color: var(--bg-soft);
+  --cdp-example-card-bg-color: var(--card-solid);
+  --cdp-example-card-border-color: var(--line-strong);
+  --cdp-example-card-max-width: 30rem;
+  --cdp-example-base-font-size: 16px;
+  --cdp-example-font-family: var(--font-sans);
+}
+
+/* -------------------------------------------------------------------------
+   Resets & base layout
+   ------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  /* Default — warm peach: Lumo's home (creator + homepage). */
+  background-image:
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(255, 213, 175, 0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(255, 184, 156, 0.4) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(232, 119, 91, 0.16) 0%, transparent 60%);
+  background-attachment: fixed;
+  transition: background-image 0.45s ease;
+}
+
+/*
+  Sender (visitor) background — soft lavender so the visitor knows they
+  are entering someone else's inbox. Lumo stays warm; everything else
+  (cards, charcoal text, coral CTA) is unchanged.
+*/
+body.sender-bg {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(196, 178, 226, 0.5) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 35% at 100% 0%, rgba(220, 200, 232, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(168, 148, 210, 0.18) 0%, transparent 60%);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#root > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+a:hover {
+  color: var(--accent-hover);
+  border-bottom-color: currentColor;
+}
+
+button {
+  font-family: inherit;
+}
+
+textarea,
+input {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.sr-only {
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.app {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* -------------------------------------------------------------------------
+   Lumo — the gradient orb
+   ------------------------------------------------------------------------- */
+
+.lumo {
+  position: relative;
+  display: inline-block;
+  width: var(--lumo-size, 88px);
+  height: var(--lumo-size, 88px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    var(--lumo-stop-1) 0%,
+    var(--lumo-stop-2) 32%,
+    var(--lumo-stop-3) 68%,
+    var(--lumo-stop-4) 100%
+  );
+  box-shadow:
+    0 0 32px var(--lumo-glow),
+    0 0 72px rgba(255, 152, 100, 0.18),
+    inset 0 0 18px rgba(255, 220, 180, 0.55);
+  animation: lumo-breathe 4.8s ease-in-out infinite;
+}
+
+.lumo::after {
+  /* Soft inner highlight for a candle-flame feel */
+  content: "";
+  position: absolute;
+  inset: 14% 22% 50% 22%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(255, 250, 230, 0.85) 0%,
+    rgba(255, 230, 195, 0.25) 50%,
+    transparent 80%
+  );
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.lumo[data-state="dim"] {
+  filter: brightness(0.78) saturate(0.85);
+  animation-duration: 7s;
+}
+
+.lumo[data-state="bright"] {
+  animation: lumo-bright 1.4s ease-out 1;
+  box-shadow:
+    0 0 56px var(--lumo-glow),
+    0 0 120px rgba(255, 152, 100, 0.35),
+    inset 0 0 22px rgba(255, 230, 200, 0.7);
+}
+
+.lumo[data-state="thinking"] {
+  animation: lumo-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes lumo-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.96;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes lumo-bright {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes lumo-shimmer {
+  0%,
+  100% {
+    box-shadow:
+      0 0 32px var(--lumo-glow),
+      0 0 72px rgba(255, 152, 100, 0.18),
+      inset 0 0 18px rgba(255, 220, 180, 0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 48px var(--lumo-glow),
+      0 0 96px rgba(255, 152, 100, 0.28),
+      inset 0 0 26px rgba(255, 240, 215, 0.8);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lumo,
+  .lumo[data-state="bright"],
+  .lumo[data-state="thinking"] {
+    animation: none;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Reusable surfaces
+   ------------------------------------------------------------------------- */
+
+.surface {
+  background: var(--card);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
