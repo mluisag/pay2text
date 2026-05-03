@@ -8,9 +8,9 @@ import {
 import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
 import { useMemo, useState } from "react"
 import { createWalletClient, custom, publicActions } from "viem"
-import { baseSepolia } from "viem/chains"
 import { wrapFetchWithPayment } from "x402-fetch"
 
+import { explorerTxUrl, tempoTestnet } from "../chain"
 import Loading from "../Loading"
 import { useCreatorByHandle } from "../hooks/useCreatorByHandle"
 import { useExternalWallet } from "../hooks/useExternalWallet"
@@ -63,7 +63,7 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
     if (activeWallet?.source === "external" && typeof window !== "undefined" && window.ethereum) {
       const client = createWalletClient({
         account: activeWallet.address as `0x${string}`,
-        chain: baseSepolia,
+        chain: tempoTestnet,
         transport: custom(window.ethereum as Parameters<typeof custom>[0]),
       }).extend(publicActions)
       return wrapFetchWithPayment(
@@ -182,11 +182,11 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
             }}
           >
             <a
-              href={`https://sepolia.basescan.org/tx/${sentTx}`}
+              href={explorerTxUrl(sentTx)}
               target="_blank"
               rel="noopener noreferrer"
             >
-              tx confirmed on Base Sepolia ↗
+              tx confirmed on Tempo testnet ↗
             </a>
           </p>
         )}
@@ -368,7 +368,7 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
             {error.includes("faucet") && (
               <>
                 {" "}
-                <a href="https://faucet.circle.com" target="_blank" rel="noopener noreferrer">
+                <a href="https://wallet.tempo.xyz" target="_blank" rel="noopener noreferrer">
                   Open faucet ↗
                 </a>
               </>
@@ -473,7 +473,7 @@ function SenderIdentityBar({
 function friendlyPaymentError(reason: string): string {
   const r = reason.toLowerCase()
   if (r.includes("insufficient_balance") || r.includes("insufficient funds")) {
-    return "Your wallet needs a little USDC. Get some at faucet.circle.com (Base Sepolia, USDC). Lumo will wait."
+    return "Your wallet needs a little pathUSD. Get some at wallet.tempo.xyz (Tempo testnet). Lumo will wait."
   }
   if (
     r.includes("user rejected") ||

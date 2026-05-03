@@ -259,7 +259,7 @@ function AgentPage() {
               <>
                 {" · "}
                 <a
-                  href={`https://sepolia.basescan.org/tx/${result.txHash}`}
+                  href={`https://explore.testnet.tempo.xyz/tx/${result.txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

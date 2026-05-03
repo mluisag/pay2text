@@ -28,13 +28,13 @@ function UserBalance(props: Props) {
         )}
       </p>
       <p>
-        Get testnet ETH from{" "}
+        Get testnet pathUSD from{" "}
         <a
-          href="https://portal.cdp.coinbase.com/products/faucet"
+          href="https://wallet.tempo.xyz"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Base Sepolia Faucet
+          Tempo testnet faucet
         </a>
       </p>
     </>

@@ -9,9 +9,13 @@ import { generateLumoTake } from './_lib/lumo-take.js'
 import { INTENTS, priceUsdToAtomicUsdc } from '../src/intents.js'
 
 const FACILITATOR_URL = 'https://x402.org/facilitator'
-const NETWORK = 'base-sepolia'
-// USDC contract on Base Sepolia (Circle's official testnet USDC)
-const USDC_BASE_SEPOLIA = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
+// NOTE: x402 layer is intentionally still wired in Phase 2 — it will not
+// successfully verify on Tempo (the x402.org facilitator doesn't know
+// Tempo). Phase 3 replaces this entire flow with mppx. Strings updated
+// here for coherence so 402 challenges aren't misleading.
+const NETWORK = 'tempo-testnet'
+// pathUSD on Tempo testnet (TIP-20, 6 decimals — same as USDC)
+const PATHUSD_TESTNET = '0x20c0000000000000000000000000000000000000'
 
 const facilitator = useFacilitator({ url: FACILITATOR_URL })
 
@@ -91,9 +95,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       mimeType: 'application/json',
       payTo: creator.walletAddress,
       maxTimeoutSeconds: 60,
-      asset: USDC_BASE_SEPOLIA,
+      asset: PATHUSD_TESTNET,
       extra: {
-        name: 'USDC',
+        name: 'pathUSD',
         version: '2',
       },
     }

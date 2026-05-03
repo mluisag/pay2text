@@ -33,9 +33,9 @@ function EOATransaction(props: Props) {
   const transaction = useMemo<SendEvmTransactionButtonProps["transaction"]>(() => {
     return {
       to: evmAddress, // Send to yourself for testing
-      value: 1000000000000n, // 0.000001 ETH in wei
+      value: 1000000000000n,
       gas: 21000n,
-      chainId: 84532, // Base Sepolia
+      chainId: 42431, // Tempo testnet (boilerplate test tx — Phase 4 will delete this component)
       type: "eip1559",
     };
   }, [evmAddress]);
@@ -81,7 +81,7 @@ function EOATransaction(props: Props) {
               <h2 className="card-title">Send a transaction</h2>
               {hasBalance && evmAddress && (
                 <>
-                  <p>Send 0.000001 ETH to yourself on Base Sepolia</p>
+                  <p>Send a tiny test transaction to yourself on Tempo testnet</p>
                   <SendEvmTransactionButton
                     account={evmAddress}
                     network="base-sepolia"
@@ -99,11 +99,11 @@ function EOATransaction(props: Props) {
                   <p>
                     Get some from{" "}
                     <a
-                      href="https://portal.cdp.coinbase.com/products/faucet"
+                      href="https://wallet.tempo.xyz"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Base Sepolia Faucet
+                      Tempo testnet faucet
                     </a>
                   </p>
                 </>
@@ -116,7 +116,7 @@ function EOATransaction(props: Props) {
               <p>
                 Transaction hash:{" "}
                 <a
-                  href={`https://sepolia.basescan.org/tx/${transactionHash}`}
+                  href={`https://explore.testnet.tempo.xyz/tx/${transactionHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

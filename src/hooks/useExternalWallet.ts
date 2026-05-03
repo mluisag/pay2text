@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react"
 
-const BASE_SEPOLIA_CHAIN_HEX = "0x14a34" // 84532
+import {
+  TEMPO_TESTNET_CHAIN_HEX,
+  TEMPO_TESTNET_EXPLORER,
+  TEMPO_TESTNET_RPC,
+} from "../chain"
 
 type Eip1193Provider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
@@ -17,7 +21,7 @@ declare global {
 /**
  * Connects to a browser wallet extension (Coinbase Wallet, MetaMask, etc.)
  * via the EIP-1193 provider exposed at window.ethereum. Switches the wallet
- * to Base Sepolia (adding the chain if the wallet doesn't know it).
+ * to Tempo testnet (adding the chain if the wallet doesn't know it).
  */
 export function useExternalWallet() {
   const [address, setAddress] = useState<string | null>(null)
@@ -51,28 +55,31 @@ export function useExternalWallet() {
         method: "eth_chainId",
       })) as string
 
-      if (chainId !== BASE_SEPOLIA_CHAIN_HEX) {
+      if (chainId !== TEMPO_TESTNET_CHAIN_HEX) {
         try {
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
-            params: [{ chainId: BASE_SEPOLIA_CHAIN_HEX }],
+            params: [{ chainId: TEMPO_TESTNET_CHAIN_HEX }],
           })
         } catch (switchErr) {
-          // 4902 = unrecognized chain — add it
+          // 4902 = unrecognized chain — add it.
+          // Tempo has no native gas token; nativeCurrency is a placeholder
+          // for EIP-1193 wallets that require it. Wallet balance display
+          // will show a sentinel value (eth_getBalance returns inflated).
           if ((switchErr as { code?: number })?.code === 4902) {
             await window.ethereum.request({
               method: "wallet_addEthereumChain",
               params: [
                 {
-                  chainId: BASE_SEPOLIA_CHAIN_HEX,
-                  chainName: "Base Sepolia",
+                  chainId: TEMPO_TESTNET_CHAIN_HEX,
+                  chainName: "Tempo Testnet",
                   nativeCurrency: {
-                    name: "Sepolia Ether",
-                    symbol: "ETH",
+                    name: "Tempo Gas",
+                    symbol: "TEMPO",
                     decimals: 18,
                   },
-                  rpcUrls: ["https://sepolia.base.org"],
-                  blockExplorerUrls: ["https://sepolia.basescan.org"],
+                  rpcUrls: [TEMPO_TESTNET_RPC],
+                  blockExplorerUrls: [TEMPO_TESTNET_EXPLORER],
                 },
               ],
             })

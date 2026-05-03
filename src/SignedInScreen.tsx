@@ -1,17 +1,17 @@
 import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPublicClient, http, formatEther } from "viem";
-import { baseSepolia } from "viem/chains";
 
+import { tempoTestnet } from "./chain";
 import EOATransaction from "./EOATransaction";
 import Header from "./Header";
 import UserBalance from "./UserBalance";
 
 /**
- * Create a viem client to access user's balance on the Base Sepolia network
+ * Create a viem client to access user's balance on Tempo testnet.
  */
 const client = createPublicClient({
-  chain: baseSepolia,
+  chain: tempoTestnet,
   transport: http(),
 });
 

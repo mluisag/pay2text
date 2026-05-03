@@ -2,10 +2,10 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createWalletClient, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { baseSepolia } from 'viem/chains'
 import { wrapFetchWithPayment } from 'x402-fetch'
 
 import { redis, type Creator } from '../_lib/redis.js'
+import { tempoTestnet } from '../../src/chain.js'
 import { INTENTS } from '../../src/intents.js'
 
 const MAX_PAYMENT_ATOMIC = 11_000_000n // 11 USDC ceiling
@@ -119,7 +119,7 @@ Respond ONLY with valid JSON, no prose, no code fences. Format:
     const account = privateKeyToAccount(agentKey as `0x${string}`)
     const walletClient = createWalletClient({
       account,
-      chain: baseSepolia,
+      chain: tempoTestnet,
       transport: http(),
     }).extend(publicActions)
 
@@ -137,7 +137,7 @@ Respond ONLY with valid JSON, no prose, no code fences. Format:
     )
 
     steps.push({
-      label: `Paying ${intent.displayPrice} on Base Sepolia…`,
+      label: `Paying ${intent.displayPrice} on Tempo testnet…`,
       state: 'thinking',
     })
 

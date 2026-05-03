@@ -463,11 +463,11 @@ function DashboardPage() {
           </div>
           <p style={{ fontSize: "0.75rem", color: "var(--text-subtle)", margin: 0 }}>
             <a
-              href={`https://sepolia.basescan.org/address/${walletAddress}#tokentxns`}
+              href={`https://explore.testnet.tempo.xyz/address/${walletAddress}`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              View live transactions on BaseScan ↗
+              View live transactions on Tempo Explorer ↗
             </a>
           </p>
         </section>
@@ -794,7 +794,7 @@ function MessageBody({ m, senderCount, truncate, hideIntentLabel }: MessageBodyP
           <>
             <span aria-hidden="true">·</span>
             <a
-              href={`https://sepolia.basescan.org/tx/${m.txHash}`}
+              href={`https://explore.testnet.tempo.xyz/tx/${m.txHash}`}
               target="_blank"
               rel="noopener noreferrer"
             >
