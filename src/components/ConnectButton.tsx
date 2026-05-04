@@ -1,4 +1,19 @@
+import { useEffect } from "react"
 import { useAccount, useConnect, useDisconnect } from "wagmi"
+
+/**
+ * Probe import: forces Vite to discover `accounts` via static analysis so
+ * its dev server pre-bundles it. The wagmi connector's runtime
+ * `await import('accounts')` swallows the real reason on failure (it
+ * always reports `dependency "accounts" not found`), so we also load it
+ * here ourselves once on mount to surface any real load error in the
+ * console. Safe to leave in production — it's a no-op after first load.
+ */
+const accountsProbe = () =>
+  import("accounts").catch((e) => {
+    console.error("[ConnectButton] failed to load accounts SDK:", e)
+    return null
+  })
 
 interface Props {
   /** Label when not connected. */
@@ -13,6 +28,10 @@ interface Props {
  * Tempo Wallet (wallet.tempo.xyz) via the wagmi/tempo dialog adapter.
  */
 function ConnectButton({ label = "Sign in", variant = "primary" }: Props) {
+  useEffect(() => {
+    accountsProbe()
+  }, [])
+
   const { address, isConnected } = useAccount()
   const { connect, connectors, isPending, error } = useConnect()
   const { disconnect } = useDisconnect()
