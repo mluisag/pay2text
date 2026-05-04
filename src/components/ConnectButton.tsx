@@ -14,10 +14,15 @@ interface Props {
  */
 function ConnectButton({ label = "Sign in", variant = "primary" }: Props) {
   const { address, isConnected } = useAccount()
-  const { connect, connectors, isPending } = useConnect()
+  const { connect, connectors, isPending, error } = useConnect()
   const { disconnect } = useDisconnect()
 
   const tempoConnector = connectors[0]
+
+  // Surface failed connect attempts in dev — the dialog connector can fail
+  // silently (e.g. when its peer SDK is missing), and useConnect's error is
+  // the only signal we get short of a debugger.
+  if (error) console.error("[ConnectButton] connect error:", error)
 
   if (isConnected && address) {
     const short = `${address.slice(0, 6)}…${address.slice(-4)}`
@@ -32,15 +37,39 @@ function ConnectButton({ label = "Sign in", variant = "primary" }: Props) {
     )
   }
 
+  const onClick = () => {
+    if (!tempoConnector) {
+      console.error("[ConnectButton] no connector configured")
+      return
+    }
+    connect({ connector: tempoConnector })
+  }
+
   return (
-    <button
-      type="button"
-      onClick={() => tempoConnector && connect({ connector: tempoConnector })}
-      disabled={isPending || !tempoConnector}
-      style={buttonStyle(variant, isPending)}
-    >
-      {isPending ? "Connecting…" : label}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={isPending || !tempoConnector}
+        style={buttonStyle(variant, isPending)}
+      >
+        {isPending ? "Connecting…" : label}
+      </button>
+      {error && (
+        <p
+          style={{
+            marginTop: "0.85rem",
+            fontSize: "0.82rem",
+            color: "var(--accent-hover)",
+            maxWidth: "24rem",
+            textAlign: "center",
+            lineHeight: 1.5,
+          }}
+        >
+          {error.message || "Couldn't connect. See console for details."}
+        </p>
+      )}
+    </>
   )
 }
 
