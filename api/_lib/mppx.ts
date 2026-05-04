@@ -11,12 +11,15 @@ import { PATHUSD_TESTNET, TEMPO_TESTNET_DECIMALS } from './tempo-constants.js'
  *   - MPPX_PRIVATE_KEY: server fee-payer key. Funds gas (in pathUSD) when
  *     co-signing client charges. Must hold pathUSD on Tempo testnet.
  *
- * Per-call we still pass `recipient` (the creator's wallet) since each
- * @handle has a different payee.
+ * We register only `tempo.charge` (not the full `tempo()` shorthand) because
+ * the shorthand also wires the session method, which requires a `viem Account`
+ * and is unused on this build.
+ *
+ * Per-call we pass `recipient` since each @handle has a different payee.
  */
 export const mppx = Mppx.create({
   methods: [
-    tempo({
+    tempo.charge({
       testnet: true,
       currency: PATHUSD_TESTNET,
       decimals: TEMPO_TESTNET_DECIMALS,
