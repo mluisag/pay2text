@@ -1,28 +1,17 @@
-import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks"
-import { AuthButton, type AuthButtonProps } from "@coinbase/cdp-react/components/AuthButton"
-import {
-  SignInModal,
-  SignInModalTrigger,
-} from "@coinbase/cdp-react/components/SignInModal"
 import { Navigate } from "react-router-dom"
+import { useAccount } from "wagmi"
 
+import ConnectButton from "../components/ConnectButton"
 import Lumo from "../components/Lumo"
 import Loading from "../Loading"
 import { useCreatorProfile } from "../hooks/useCreatorProfile"
 
-const SignInWithCustomLabel: AuthButtonProps["signInModal"] = (props) => (
-  <SignInModal {...props}>
-    <SignInModalTrigger label="Get my link" />
-  </SignInModal>
-)
-
 function HomePage() {
-  const { isSignedIn } = useIsSignedIn()
-  const { evmAddress } = useEvmAddress()
+  const { isConnected, address } = useAccount()
   const { creator, isLoading } = useCreatorProfile()
 
-  if (isSignedIn) {
-    if (!evmAddress || isLoading) return <Loading />
+  if (isConnected) {
+    if (!address || isLoading) return <Loading />
     if (creator) return <Navigate to="/dashboard" replace />
     return <Navigate to="/onboard" replace />
   }
@@ -71,7 +60,7 @@ function HomePage() {
         favors… the price tells you who actually means it.
       </p>
 
-      <AuthButton signInModal={SignInWithCustomLabel} />
+      <ConnectButton label="Get my link" />
 
       <p
         style={{
@@ -82,7 +71,7 @@ function HomePage() {
           lineHeight: 1.55,
         }}
       >
-        No crypto knowledge needed. Sign in with your phone or email.
+        Sign in with Tempo Wallet — passkey-secured, no seed phrase.
       </p>
     </main>
   )

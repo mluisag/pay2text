@@ -1,15 +1,18 @@
-import { LoadingSpinner } from "@coinbase/cdp-react/components/ui/LoadingSpinner";
-
-/**
- * App loading screen
- */
 function Loading() {
   return (
-    <main>
+    <main
+      style={{
+        flex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "3rem 1.5rem",
+      }}
+    >
       <h1 className="sr-only">Loading</h1>
-      <LoadingSpinner />
+      <div className="lumo-spinner" aria-hidden="true" />
     </main>
-  );
+  )
 }
 
-export default Loading;
+export default Loading

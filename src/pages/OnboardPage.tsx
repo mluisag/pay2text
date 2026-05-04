@@ -1,16 +1,16 @@
-import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks"
 import { useState, type FormEvent } from "react"
 import { Navigate, useNavigate } from "react-router-dom"
+import { useAccount } from "wagmi"
 
 import Lumo from "../components/Lumo"
 import Loading from "../Loading"
 import { useCreatorProfile } from "../hooks/useCreatorProfile"
 
 const HANDLE_REGEX = /^[a-z0-9]{3,32}$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function OnboardPage() {
-  const { isSignedIn } = useIsSignedIn()
-  const { evmAddress } = useEvmAddress()
+  const { isConnected, address } = useAccount()
   const { creator, isLoading, refresh } = useCreatorProfile()
   const navigate = useNavigate()
 
@@ -19,16 +19,22 @@ function OnboardPage() {
   const [error, setError] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  if (!isSignedIn) return <Navigate to="/" replace />
-  if (isLoading || !evmAddress) return <Loading />
+  if (!isConnected) return <Navigate to="/" replace />
+  if (isLoading || !address) return <Loading />
   if (creator) return <Navigate to="/dashboard" replace />
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const normalized = handle.toLowerCase().trim()
+    const trimmedEmail = email.trim()
 
     if (!HANDLE_REGEX.test(normalized)) {
       setError("Handle must be 3–32 lowercase letters or numbers, no spaces.")
+      return
+    }
+
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setError("Lumo needs a valid email so messages can reach you.")
       return
     }
 
@@ -41,15 +47,15 @@ function OnboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           handle: normalized,
-          walletAddress: evmAddress,
-          email: email.trim() || undefined,
+          walletAddress: address,
+          email: trimmedEmail,
         }),
       })
 
       if (res.status === 409) {
         const data = await res.json().catch(() => ({}))
         if (data.error === "handle_taken") {
-          setError(`pay2text.xyz/${normalized} is already taken. Try another.`)
+          setError(`tempo.pay2text.xyz/${normalized} is already taken. Try another.`)
         } else if (data.error === "wallet_already_registered") {
           await refresh()
           navigate("/dashboard")
@@ -117,7 +123,7 @@ function OnboardPage() {
             }}
           >
             <span style={{ color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-              pay2text.xyz/
+              tempo.pay2text.xyz/
             </span>
             <input
               type="text"
@@ -153,13 +159,14 @@ function OnboardPage() {
                 letterSpacing: "0.01em",
               }}
             >
-              Email for forwarded messages (optional)
+              Email for forwarded messages
             </span>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              required
               style={{
                 width: "100%",
                 border: "none",
@@ -188,8 +195,8 @@ function OnboardPage() {
 
         <button
           type="submit"
-          disabled={submitting || handle.length < 3}
-          style={primaryButton(submitting || handle.length < 3, submitting)}
+          disabled={submitting || handle.length < 3 || email.trim().length === 0}
+          style={primaryButton(submitting || handle.length < 3 || email.trim().length === 0, submitting)}
         >
           {submitting ? "Saving…" : "Continue"}
         </button>

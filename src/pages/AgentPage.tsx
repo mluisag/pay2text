@@ -125,7 +125,7 @@ function AgentPage() {
             }}
           >
             <span style={{ color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-              pay2text.xyz/
+              tempo.pay2text.xyz/
             </span>
             <input
               type="text"

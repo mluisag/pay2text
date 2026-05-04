@@ -1,5 +1,5 @@
-import { useEvmAddress } from "@coinbase/cdp-hooks"
 import { useCallback, useEffect, useState } from "react"
+import { useAccount } from "wagmi"
 
 export type Creator = {
   handle: string
@@ -9,19 +9,19 @@ export type Creator = {
 }
 
 export function useCreatorProfile() {
-  const { evmAddress } = useEvmAddress()
+  const { address } = useAccount()
   const [creator, setCreator] = useState<Creator | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const refresh = useCallback(async () => {
-    if (!evmAddress) {
+    if (!address) {
       setCreator(null)
       setIsLoading(false)
       return
     }
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/creators?walletAddress=${evmAddress}`)
+      const res = await fetch(`/api/creators?walletAddress=${address}`)
       if (res.status === 404) {
         setCreator(null)
       } else if (res.ok) {
@@ -34,7 +34,7 @@ export function useCreatorProfile() {
     } finally {
       setIsLoading(false)
     }
-  }, [evmAddress])
+  }, [address])
 
   useEffect(() => {
     refresh()

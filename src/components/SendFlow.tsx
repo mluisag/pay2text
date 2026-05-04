@@ -1,18 +1,11 @@
-import {
-  useCurrentUser,
-  useEvmAddress,
-  useIsSignedIn,
-  useSignOut,
-} from "@coinbase/cdp-hooks"
-import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
 import { Mppx, tempo } from "mppx/client"
 import { useMemo, useState } from "react"
-import { createWalletClient, custom, publicActions } from "viem"
+import { useAccount, useDisconnect, useWalletClient } from "wagmi"
 
-import { explorerTxUrl, tempoTestnet } from "../chain"
+import { explorerTxUrl } from "../chain"
 import Loading from "../Loading"
+import ConnectButton from "./ConnectButton"
 import { useCreatorByHandle } from "../hooks/useCreatorByHandle"
-import { useExternalWallet } from "../hooks/useExternalWallet"
 import { INTENTS, type Intent } from "../intents"
 import Lumo from "./Lumo"
 
@@ -29,54 +22,24 @@ interface Props {
 }
 
 /**
- * The full sender flow: pick intent -> compose -> pay via x402 -> sent.
- * Used standalone on /:handle and embedded in the dashboard's Send tab.
+ * Sender flow: pick intent → compose → pay via mppx → sent.
+ * Single wallet path now: Tempo Wallet via wagmi.
  */
 function SendFlow({ handle, compact = false, onSent }: Props) {
   const { creator, isLoading, notFound } = useCreatorByHandle(handle)
 
-  const { isSignedIn: cdpSignedIn } = useIsSignedIn()
-  const { evmAddress: cdpAddress } = useEvmAddress()
-  const { currentUser } = useCurrentUser()
-  const { signOut } = useSignOut()
+  const { address, isConnected } = useAccount()
+  const { data: walletClient } = useWalletClient()
+  const { disconnect } = useDisconnect()
 
-  const ext = useExternalWallet()
-
-  const cdpIdentity =
-    currentUser?.authenticationMethods?.email?.email ??
-    currentUser?.authenticationMethods?.sms?.phoneNumber ??
-    null
-
-  const activeWallet: { source: "cdp" | "external"; address: string } | null = ext.address
-    ? { source: "external", address: ext.address }
-    : cdpAddress
-      ? { source: "cdp", address: cdpAddress }
-      : null
-
-  // External-wallet-only on the Tempo build. CDP doesn't issue Tempo
-  // accounts, so a CDP-signed-in user with no external wallet sees the
-  // "Connect your wallet" prompt instead of a payable button.
-  // (Phase 4 will rip the CDP UI path entirely.)
   const fetchWithPayment = useMemo(() => {
-    if (
-      activeWallet?.source === "external" &&
-      typeof window !== "undefined" &&
-      window.ethereum
-    ) {
-      const client = createWalletClient({
-        account: activeWallet.address as `0x${string}`,
-        chain: tempoTestnet,
-        transport: custom(window.ethereum as Parameters<typeof custom>[0]),
-      }).extend(publicActions)
-
-      const mppx = Mppx.create({
-        methods: [tempo({ account: client.account })],
-        polyfill: false,
-      })
-      return mppx.fetch
-    }
-    return null
-  }, [activeWallet?.source, activeWallet?.address])
+    if (!walletClient?.account) return null
+    const mppx = Mppx.create({
+      methods: [tempo({ account: walletClient.account })],
+      polyfill: false,
+    })
+    return mppx.fetch
+  }, [walletClient])
 
   const [step, setStep] = useState<Step>("pick")
   const [intent, setIntent] = useState<Intent | null>(null)
@@ -208,8 +171,8 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
           Send another
         </button>
 
-        {cdpSignedIn && cdpIdentity && (
-          <SenderIdentityBar identity={cdpIdentity} onSignOut={signOut} />
+        {isConnected && address && (
+          <SenderIdentityBar address={address} onSignOut={() => disconnect()} />
         )}
       </main>
     )
@@ -217,10 +180,8 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
 
   // Compose state -------------------------------------------------------
   if (step === "compose" && intent) {
-    const canSend = !!activeWallet && message.trim().length > 0 && !sending
-    const senderShort = activeWallet
-      ? `${activeWallet.address.slice(0, 6)}…${activeWallet.address.slice(-4)}`
-      : null
+    const canSend = isConnected && message.trim().length > 0 && !sending
+    const senderShort = address ? `${address.slice(0, 6)}…${address.slice(-4)}` : null
 
     return (
       <main style={pageContainer}>
@@ -245,35 +206,22 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
           What do you want to say?
         </p>
 
-        {activeWallet ? (
+        {isConnected && address ? (
           <div style={inlineSignedInBar}>
-            {activeWallet.source === "cdp" && cdpIdentity ? (
-              <>
-                Signed in as{" "}
-                <span style={{ color: "var(--text)", fontWeight: 500 }}>{cdpIdentity}</span>
-                <span aria-hidden="true"> · </span>
-                <button type="button" onClick={() => void signOut()} style={tinyLink}>
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <>
-                Connected{" "}
-                <span
-                  style={{
-                    color: "var(--text)",
-                    fontWeight: 500,
-                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  }}
-                >
-                  {senderShort}
-                </span>
-                <span aria-hidden="true"> · </span>
-                <button type="button" onClick={() => ext.disconnect()} style={tinyLink}>
-                  Disconnect
-                </button>
-              </>
-            )}
+            Connected{" "}
+            <span
+              style={{
+                color: "var(--text)",
+                fontWeight: 500,
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              }}
+            >
+              {senderShort}
+            </span>
+            <span aria-hidden="true"> · </span>
+            <button type="button" onClick={() => disconnect()} style={tinyLink}>
+              Sign out
+            </button>
           </div>
         ) : (
           <div style={compactAuthBlock}>
@@ -287,27 +235,7 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
             >
               Sign in to pay the toll
             </p>
-            <div>
-              <AuthButton />
-            </div>
-            {ext.isAvailable && (
-              <p style={{ margin: "0.7rem 0 0", fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                Already have a crypto wallet?{" "}
-                <button
-                  type="button"
-                  onClick={() => ext.connect()}
-                  disabled={ext.isConnecting}
-                  style={inlineConnectLink}
-                >
-                  {ext.isConnecting ? "Connecting…" : "Connect →"}
-                </button>
-              </p>
-            )}
-            {ext.error && (
-              <p style={{ color: "var(--accent-hover)", marginTop: "0.5rem", fontSize: "0.78rem" }}>
-                {ext.error}
-              </p>
-            )}
+            <ConnectButton label="Sign in with Tempo Wallet" />
           </div>
         )}
 
@@ -348,14 +276,7 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
 
         <div style={metaRow}>
           <span>
-            {activeWallet && senderShort ? (
-              <>
-                paying from {senderShort}
-                {activeWallet.source === "external" ? " (extension)" : ""}
-              </>
-            ) : (
-              <>not signed in yet</>
-            )}
+            {senderShort ? <>paying from {senderShort}</> : <>not signed in yet</>}
           </span>
           <span style={{ fontVariantNumeric: "tabular-nums" }}>
             {message.length}/{MAX_MESSAGE_LENGTH}
@@ -432,12 +353,13 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
 }
 
 function SenderIdentityBar({
-  identity,
+  address,
   onSignOut,
 }: {
-  identity: string
-  onSignOut: () => Promise<void>
+  address: string
+  onSignOut: () => void
 }) {
+  const short = `${address.slice(0, 6)}…${address.slice(-4)}`
   return (
     <p
       style={{
@@ -448,11 +370,19 @@ function SenderIdentityBar({
         lineHeight: 1.5,
       }}
     >
-      Sending as <span style={{ color: "var(--text-muted)" }}>{identity}</span>
+      Sending as{" "}
+      <span
+        style={{
+          color: "var(--text-muted)",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        }}
+      >
+        {short}
+      </span>
       <span aria-hidden="true"> · </span>
       <button
         type="button"
-        onClick={() => void onSignOut()}
+        onClick={onSignOut}
         style={{
           background: "none",
           border: "none",
@@ -560,18 +490,6 @@ const compactAuthBlock: React.CSSProperties = {
   backdropFilter: "blur(14px) saturate(1.05)",
   WebkitBackdropFilter: "blur(14px) saturate(1.05)",
   boxShadow: "0 3px 12px rgba(232, 119, 91, 0.12)",
-}
-
-const inlineConnectLink: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  padding: 0,
-  color: "var(--accent)",
-  fontWeight: 600,
-  cursor: "pointer",
-  fontSize: "inherit",
-  fontFamily: "inherit",
-  textDecoration: "underline",
 }
 
 const inlineSignedInBar: React.CSSProperties = {

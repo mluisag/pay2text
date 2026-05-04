@@ -1,9 +1,9 @@
-import { useEvmAddress, useIsSignedIn } from "@coinbase/cdp-hooks"
-import { AuthButton } from "@coinbase/cdp-react/components/AuthButton"
 import { QRCodeSVG } from "qrcode.react"
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { Link, Navigate } from "react-router-dom"
+import { useAccount } from "wagmi"
 
+import ConnectButton from "../components/ConnectButton"
 import Lumo from "../components/Lumo"
 import Loading from "../Loading"
 import SendFlow from "../components/SendFlow"
@@ -36,8 +36,7 @@ function saveRecents(list: string[]) {
 }
 
 function DashboardPage() {
-  const { isSignedIn } = useIsSignedIn()
-  const { evmAddress } = useEvmAddress()
+  const { isConnected, address } = useAccount()
   const { creator, isLoading } = useCreatorProfile()
   const { messages, isLoading: messagesLoading } = useMessages(creator?.handle)
   const [copiedField, setCopiedField] = useState<"link" | "address" | null>(null)
@@ -183,12 +182,12 @@ function DashboardPage() {
     [messages],
   )
 
-  if (!isSignedIn) return <Navigate to="/" replace />
+  if (!isConnected) return <Navigate to="/" replace />
   if (isLoading) return <Loading />
   if (!creator) return <Navigate to="/onboard" replace />
 
-  const link = `https://pay2text.xyz/${creator.handle}`
-  const walletAddress = evmAddress ?? creator.walletAddress
+  const link = `https://tempo.pay2text.xyz/${creator.handle}`
+  const walletAddress = address ?? creator.walletAddress
 
   const copy = async (value: string, field: "link" | "address") => {
     try {
@@ -243,11 +242,11 @@ function DashboardPage() {
               {displayName}'s inbox
             </h1>
             <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              pay2text.xyz/{creator.handle}
+              tempo.pay2text.xyz/{creator.handle}
             </p>
           </div>
         </div>
-        <AuthButton />
+        <ConnectButton variant="ghost" />
       </header>
 
       {celebrating && (
@@ -293,7 +292,7 @@ function DashboardPage() {
               <p style={{ ...fieldLabelStyle, marginBottom: "0.4rem" }}>Send a message to</p>
               <div style={sendHandleRow}>
                 <span style={{ color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-                  pay2text.xyz/
+                  tempo.pay2text.xyz/
                 </span>
                 <input
                   type="text"

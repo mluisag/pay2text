@@ -34,7 +34,7 @@ export async function sendMessageEmail(
 
   const { toEmail, intentLabel, amountDisplay, senderAddress, messageText, replyTo, lumoTake } =
     input
-  const dashboardUrl = 'https://pay2text.xyz/dashboard'
+  const dashboardUrl = 'https://tempo.pay2text.xyz/dashboard'
   const senderShort =
     senderAddress.length > 14
       ? `${senderAddress.slice(0, 6)}…${senderAddress.slice(-4)}`
