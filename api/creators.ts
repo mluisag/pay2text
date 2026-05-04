@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { redis, type Creator } from './_lib/redis.js'
+import { keys, redis, type Creator } from './_lib/redis.js'
 
 const HANDLE_REGEX = /^[a-z0-9]{3,32}$/
 
@@ -12,15 +12,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         typeof req.query.walletAddress === 'string' ? req.query.walletAddress : null
 
       if (handle) {
-        const creator = await redis.get<Creator>(`creator:${handle.toLowerCase()}`)
+        const creator = await redis.get<Creator>(keys.creator(handle))
         if (!creator) return res.status(404).json({ error: 'not_found' })
         return res.status(200).json(creator)
       }
 
       if (walletAddress) {
-        const handleForWallet = await redis.get<string>(`wallet:${walletAddress.toLowerCase()}`)
+        const handleForWallet = await redis.get<string>(keys.wallet(walletAddress))
         if (!handleForWallet) return res.status(404).json({ error: 'not_found' })
-        const creator = await redis.get<Creator>(`creator:${handleForWallet}`)
+        const creator = await redis.get<Creator>(keys.creator(handleForWallet))
         if (!creator) return res.status(404).json({ error: 'not_found' })
         return res.status(200).json(creator)
       }
@@ -42,10 +42,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'invalid_handle' })
       }
 
-      const existingHandle = await redis.get(`creator:${normalizedHandle}`)
+      const existingHandle = await redis.get(keys.creator(normalizedHandle))
       if (existingHandle) return res.status(409).json({ error: 'handle_taken' })
 
-      const existingWallet = await redis.get(`wallet:${normalizedAddress}`)
+      const existingWallet = await redis.get(keys.wallet(normalizedAddress))
       if (existingWallet) return res.status(409).json({ error: 'wallet_already_registered' })
 
       const creator: Creator = {
@@ -55,8 +55,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         createdAt: new Date().toISOString(),
       }
 
-      await redis.set(`creator:${normalizedHandle}`, creator)
-      await redis.set(`wallet:${normalizedAddress}`, normalizedHandle)
+      await redis.set(keys.creator(normalizedHandle), creator)
+      await redis.set(keys.wallet(normalizedAddress), normalizedHandle)
 
       return res.status(201).json(creator)
     }
@@ -67,10 +67,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'invalid_body' })
       }
       const normalizedAddress = walletAddress.toLowerCase()
-      const handleForWallet = await redis.get<string>(`wallet:${normalizedAddress}`)
+      const handleForWallet = await redis.get<string>(keys.wallet(normalizedAddress))
       if (!handleForWallet) return res.status(404).json({ error: 'not_found' })
 
-      const existing = await redis.get<Creator>(`creator:${handleForWallet}`)
+      const existing = await redis.get<Creator>(keys.creator(handleForWallet))
       if (!existing) return res.status(404).json({ error: 'not_found' })
 
       // Only fields we currently allow editing.
@@ -82,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : existing.email
 
       const updated: Creator = { ...existing, email: nextEmail }
-      await redis.set(`creator:${handleForWallet}`, updated)
+      await redis.set(keys.creator(handleForWallet), updated)
       return res.status(200).json(updated)
     }
 

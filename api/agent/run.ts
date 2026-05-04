@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { Mppx, tempo } from 'mppx/client'
 import { privateKeyToAccount } from 'viem/accounts'
 
-import { redis, type Creator } from '../_lib/redis.js'
+import { keys, redis, type Creator } from '../_lib/redis.js'
 import { INTENTS } from '../../src/intents.js'
 
 type AgentStep = {
@@ -28,7 +28,7 @@ export default async function handler(request: Request): Promise<Response> {
       return Response.json({ error: 'missing_handle' }, { status: 400 })
     }
 
-    const creator = await redis.get<Creator>(`creator:${handle.toLowerCase()}`)
+    const creator = await redis.get<Creator>(keys.creator(handle))
     if (!creator) return Response.json({ error: 'recipient_not_found' }, { status: 404 })
     steps.push({
       label: `Found @${creator.handle}`,

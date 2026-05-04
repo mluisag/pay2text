@@ -1,6 +1,6 @@
 import { Credential, Receipt } from 'mppx'
 
-import { redis, type Creator } from './_lib/redis.js'
+import { keys, redis, type Creator } from './_lib/redis.js'
 import { sendMessageEmail } from './_lib/email.js'
 import { generateLumoTake } from './_lib/lumo-take.js'
 import { mppx } from './_lib/mppx.js'
@@ -29,7 +29,7 @@ export default async function handler(request: Request): Promise<Response> {
       const handle = url.searchParams.get('handle')
       if (!handle) return Response.json({ error: 'missing_handle' }, { status: 400 })
 
-      const items = await redis.lrange(`messages:${handle.toLowerCase()}`, 0, -1)
+      const items = await redis.lrange(keys.messages(handle), 0, -1)
       const messages = items.map((it) =>
         typeof it === 'string' ? JSON.parse(it) : it,
       )
@@ -75,7 +75,7 @@ export default async function handler(request: Request): Promise<Response> {
       return Response.json({ error: 'invalid_message_length' }, { status: 400 })
     }
 
-    const creator = await redis.get<Creator>(`creator:${handle.toLowerCase()}`)
+    const creator = await redis.get<Creator>(keys.creator(handle))
     if (!creator) return Response.json({ error: 'recipient_not_found' }, { status: 404 })
 
     const intent = INTENTS.find((i) => i.id === intentId)
@@ -152,7 +152,7 @@ export default async function handler(request: Request): Promise<Response> {
       timestamp: new Date().toISOString(),
     }
 
-    await redis.lpush(`messages:${creator.handle}`, JSON.stringify(messageRecord))
+    await redis.lpush(keys.messages(creator.handle), JSON.stringify(messageRecord))
     console.log(
       `[messages] saved id=${messageRecord.id} for @${creator.handle}, intent=${intent.id}, amount=${intent.displayPrice}`,
     )
