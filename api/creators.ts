@@ -1,52 +1,57 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-
 import { keys, redis, type Creator } from './_lib/redis.js'
 
 const HANDLE_REGEX = /^[a-z0-9]{3,32}$/
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(request: Request): Promise<Response> {
   try {
-    if (req.method === 'GET') {
-      const handle = typeof req.query.handle === 'string' ? req.query.handle : null
-      const walletAddress =
-        typeof req.query.walletAddress === 'string' ? req.query.walletAddress : null
+    const url = new URL(request.url)
+
+    if (request.method === 'GET') {
+      const handle = url.searchParams.get('handle')
+      const walletAddress = url.searchParams.get('walletAddress')
 
       if (handle) {
         const creator = await redis.get<Creator>(keys.creator(handle))
-        if (!creator) return res.status(404).json({ error: 'not_found' })
-        return res.status(200).json(creator)
+        if (!creator) return Response.json({ error: 'not_found' }, { status: 404 })
+        return Response.json(creator)
       }
 
       if (walletAddress) {
         const handleForWallet = await redis.get<string>(keys.wallet(walletAddress))
-        if (!handleForWallet) return res.status(404).json({ error: 'not_found' })
+        if (!handleForWallet) return Response.json({ error: 'not_found' }, { status: 404 })
         const creator = await redis.get<Creator>(keys.creator(handleForWallet))
-        if (!creator) return res.status(404).json({ error: 'not_found' })
-        return res.status(200).json(creator)
+        if (!creator) return Response.json({ error: 'not_found' }, { status: 404 })
+        return Response.json(creator)
       }
 
-      return res.status(400).json({ error: 'missing_query_param' })
+      return Response.json({ error: 'missing_query_param' }, { status: 400 })
     }
 
-    if (req.method === 'POST') {
-      const { handle, walletAddress, email } = req.body ?? {}
+    if (request.method === 'POST') {
+      const body = (await request.json().catch(() => null)) as
+        | { handle?: unknown; walletAddress?: unknown; email?: unknown }
+        | null
+      if (!body) return Response.json({ error: 'invalid_body' }, { status: 400 })
+      const { handle, walletAddress, email } = body
 
       if (typeof handle !== 'string' || typeof walletAddress !== 'string') {
-        return res.status(400).json({ error: 'invalid_body' })
+        return Response.json({ error: 'invalid_body' }, { status: 400 })
       }
 
       const normalizedHandle = handle.toLowerCase().trim()
       const normalizedAddress = walletAddress.toLowerCase()
 
       if (!HANDLE_REGEX.test(normalizedHandle)) {
-        return res.status(400).json({ error: 'invalid_handle' })
+        return Response.json({ error: 'invalid_handle' }, { status: 400 })
       }
 
       const existingHandle = await redis.get(keys.creator(normalizedHandle))
-      if (existingHandle) return res.status(409).json({ error: 'handle_taken' })
+      if (existingHandle) return Response.json({ error: 'handle_taken' }, { status: 409 })
 
       const existingWallet = await redis.get(keys.wallet(normalizedAddress))
-      if (existingWallet) return res.status(409).json({ error: 'wallet_already_registered' })
+      if (existingWallet) {
+        return Response.json({ error: 'wallet_already_registered' }, { status: 409 })
+      }
 
       const creator: Creator = {
         handle: normalizedHandle,
@@ -58,38 +63,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await redis.set(keys.creator(normalizedHandle), creator)
       await redis.set(keys.wallet(normalizedAddress), normalizedHandle)
 
-      return res.status(201).json(creator)
+      return Response.json(creator, { status: 201 })
     }
 
-    if (req.method === 'PATCH') {
-      const { walletAddress, email } = req.body ?? {}
-      if (typeof walletAddress !== 'string') {
-        return res.status(400).json({ error: 'invalid_body' })
+    if (request.method === 'PATCH') {
+      const body = (await request.json().catch(() => null)) as
+        | { walletAddress?: unknown; email?: unknown }
+        | null
+      if (!body || typeof body.walletAddress !== 'string') {
+        return Response.json({ error: 'invalid_body' }, { status: 400 })
       }
-      const normalizedAddress = walletAddress.toLowerCase()
+
+      const normalizedAddress = body.walletAddress.toLowerCase()
       const handleForWallet = await redis.get<string>(keys.wallet(normalizedAddress))
-      if (!handleForWallet) return res.status(404).json({ error: 'not_found' })
+      if (!handleForWallet) return Response.json({ error: 'not_found' }, { status: 404 })
 
       const existing = await redis.get<Creator>(keys.creator(handleForWallet))
-      if (!existing) return res.status(404).json({ error: 'not_found' })
+      if (!existing) return Response.json({ error: 'not_found' }, { status: 404 })
 
-      // Only fields we currently allow editing.
       const nextEmail =
-        typeof email === 'string'
-          ? email.trim() === ''
+        typeof body.email === 'string'
+          ? body.email.trim() === ''
             ? undefined
-            : email.trim()
+            : body.email.trim()
           : existing.email
 
       const updated: Creator = { ...existing, email: nextEmail }
       await redis.set(keys.creator(handleForWallet), updated)
-      return res.status(200).json(updated)
+      return Response.json(updated)
     }
 
-    res.setHeader('Allow', 'GET, POST, PATCH')
-    return res.status(405).json({ error: 'method_not_allowed' })
+    return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
+      status: 405,
+      headers: { Allow: 'GET, POST, PATCH', 'Content-Type': 'application/json' },
+    })
   } catch (err) {
     console.error('creators handler error:', err)
-    return res.status(500).json({ error: 'server_error' })
+    return Response.json({ error: 'server_error' }, { status: 500 })
   }
 }
