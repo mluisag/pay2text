@@ -186,7 +186,12 @@ function DashboardPage() {
   if (isLoading) return <Loading />
   if (!creator) return <Navigate to="/onboard" replace />
 
-  const link = `https://tempo.pay2text.xyz/${creator.handle}`
+  // Use the running origin (localhost in dev, tempo.pay2text.xyz in prod)
+  // so the QR + copy-link actually work wherever this is hosted.
+  const link =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/${creator.handle}`
+      : `/${creator.handle}`
   const walletAddress = address ?? creator.walletAddress
 
   const copy = async (value: string, field: "link" | "address") => {
