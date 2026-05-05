@@ -2,13 +2,31 @@
 
 > Inboxes are loud. Lumo is quiet.
 
-Lumo is a calm presence that guards your inbox. Anyone gets a personal
-link — `tempo.pay2text.xyz/{handle}` — that lets people pay a small toll
-to send them a message. The price tells you who actually means it.
+Lumo is a calm presence that guards an inbox. Anyone gets a personal
+link — `pay2text.xyz/{handle}` — that lets people pay a small toll to
+send a message. The price tells you who actually means it.
 
-> This is the **Tempo build** of Lumo, running on Tempo testnet alongside
-> the original [pay2text.xyz](https://pay2text.xyz) (Base + CDP + x402).
-> Same product, different chain — for side-by-side comparison.
+---
+
+## Two parallel builds, one repo
+
+This repo ships Lumo on two chains side-by-side, on two branches:
+
+| Branch  | Live URL                                              | Wallet                            | Payments       | Chain                            |
+| ------- | ----------------------------------------------------- | --------------------------------- | -------------- | -------------------------------- |
+| `main`  | [pay2text.xyz](https://pay2text.xyz)                  | Coinbase CDP (email/SMS)          | x402 + USDC    | Base Sepolia (84532)             |
+| `tempo` | [tempo.pay2text.xyz](https://tempo.pay2text.xyz)      | Tempo Wallet (passkey via wagmi)  | mppx + pathUSD | Tempo testnet "Moderato" (42431) |
+
+Same product, different rails. Switch branches to work on a build:
+
+```bash
+git checkout main    # Base / CDP / x402 build
+git checkout tempo   # Tempo / Wagmi / mppx build
+```
+
+Both deploys are independent Vercel projects sharing one Upstash Redis
+(the `tempo` branch namespaces all keys with `tempo:` so the data is
+isolated).
 
 ---
 
@@ -29,18 +47,19 @@ The price isn't the point. The price is the filter.
 ## How it works
 
 **For creators (people receiving messages):**
-1. Sign in with Tempo Wallet (passkey-secured, no seed phrase)
-2. Pick your handle: `tempo.pay2text.xyz/yourname`
-3. Add an email so messages can reach you
-4. Share your link anywhere
-5. When someone pays to message you, you get an email and see it
+1. Sign in (email/SMS on `main`, passkey on `tempo`)
+2. A wallet is created for you — no seed phrase, no crypto knowledge needed
+3. Pick your handle: `pay2text.xyz/yourname`
+4. Add an email so messages can reach you
+5. Share your link anywhere
+6. When someone pays to message you, you get an email and see it
    in your dashboard. Lumo already read it and left a take.
 
 **For senders (people paying to message):**
 1. Visit someone's Lumo page
 2. Lumo asks: *"Why are you reaching out?"*
 3. Pick a reason — each has a price
-4. Sign in with Tempo Wallet, pay in pathUSD, write your message
+4. Sign in, pay (USDC on `main`, pathUSD on `tempo`), write your message
 5. Lumo confirms: *"Thanks for stopping by. I'll make sure
    this lands."*
 
@@ -63,142 +82,82 @@ The displayed price and the on-chain charge amount always match.
 
 ## Why micropayments?
 
-The **Machine Payments Protocol** (mppx) implements the HTTP 402
-"Payment Required" standard — same shape as x402, same idea: pay
-inline as part of an HTTP request, settle on-chain, no platform
-account, no minimum fee. Stripe's 30¢ floor makes "just saying hi
-for a penny" impossible. HTTP 402 makes it trivial.
+The HTTP 402 "Payment Required" standard lets a server demand payment
+inline as part of a request. Two implementations of it sit under Lumo's
+hood, one per branch:
 
-On Tempo specifically, two things tighten the experience:
+- **`main` uses [x402](https://x402.org)** — Coinbase's HTTP 402 stack
+  on Base, paying in USDC.
+- **`tempo` uses [mppx](https://mpp.dev)** — the Machine Payments
+  Protocol on Tempo, paying in pathUSD.
 
-1. **Fee sponsorship is built in.** The server co-signs the payment
-   transaction as fee-payer, so the sender doesn't need a separate
-   gas-token balance. Sender holds pathUSD, server holds pathUSD,
-   that's it.
-2. **~500ms finality.** Tempo uses Simplex BFT consensus —
-   deterministic finality, ~500ms blocks — so the message lands
-   essentially as fast as a normal API request.
+Both protocols are conceptually identical (same `WWW-Authenticate:
+Payment` challenge, same `Authorization: Payment` retry). The product
+code that consumes them — pick intent → 402 challenge → wallet signs →
+server verifies → message saved — is the same shape on both branches.
 
-Payments go directly from the sender's wallet to the creator's wallet.
-No platform escrow. No middleman. The browser cannot fake a payment;
-mppx verifies the on-chain settlement before the message is saved.
-Either the payment happened or it didn't.
+Tempo adds **built-in fee sponsorship**: the server co-signs as
+fee-payer, so the sender doesn't need a separate gas-token balance.
+Sender holds pathUSD, server holds pathUSD, that's it.
 
----
-
-## What changed from pay2text
-
-This is the same product on a different chain. Three layers swapped:
-
-| Layer    | pay2text.xyz (Base)        | tempo.pay2text.xyz (Tempo)        |
-| -------- | -------------------------- | --------------------------------- |
-| Auth     | Coinbase CDP (email/SMS)   | Tempo Wallet (passkey via wagmi)  |
-| Payments | x402 + USDC                | mppx + pathUSD                    |
-| Chain    | Base Sepolia (ID 84532)    | Tempo testnet "Moderato" (42431)  |
-
-Everything else — Lumo's take, the inbox UI, intent pricing,
-QR codes, Resend forwarding — ports unchanged.
+The browser cannot fake a payment. The server verifies on-chain
+settlement before saving the message. Either the payment happened or
+it didn't.
 
 ---
 
 ## Features
 
 - **Intent-based pricing** — senders pick a reason, not an amount
-- **Passkey wallets** — Tempo Wallet via wagmi/tempo, no seed phrase,
-  no extension to install
-- **Direct settlement** — pathUSD goes straight to the creator's wallet
-- **Built-in fee sponsorship** — server co-signs as fee-payer; senders
-  don't need a separate gas-token balance
-- **On-chain verification** — mppx verifies the payment credential and
-  on-chain settlement before saving the message
+- **Invisible wallets** — embedded on `main` (CDP), passkey on `tempo`;
+  no seed phrase either way
+- **Direct settlement** — payment goes straight from sender's wallet
+  to creator's wallet
+- **On-chain verification** — server verifies the payment credential
+  + on-chain settlement before saving the message
 - **Email forwarding** — every message forwarded to creator's email
   via Resend
 - **AI screening** — Claude Haiku reads each message and leaves a
   one-line "Lumo's take"
-- **Tempo Explorer link** — every payment links to the real on-chain tx
+- **Explorer link** — every payment links to the real on-chain tx
+  (BaseScan on `main`, Tempo Explorer on `tempo`)
 - **QR code** — creators show their QR anywhere for instant payments
 - **Mobile-first** — designed for 375px, works beautifully on phone
 
 ---
 
-## Tools & APIs used
+## Stack
 
-### AI & Development
+| Layer    | `main` (Base build)                          | `tempo` (Tempo build)                                 |
+| -------- | -------------------------------------------- | ----------------------------------------------------- |
+| Auth     | `@coinbase/cdp-react` (email + SMS)          | `wagmi/tempo` `tempoWallet()` connector (passkey)     |
+| Payments | `x402` + `x402-fetch` (Coinbase facilitator) | `mppx` (built-in fee sponsorship, no facilitator)     |
+| Chain    | Base Sepolia, USDC                           | Tempo testnet "Moderato", pathUSD                     |
+| Common   | React 19, Vite 7, viem 2.48, Vercel functions, Upstash Redis, Resend, Anthropic Claude Haiku |  |
 
-| Tool                                              | What I used it for                                              |
-| ------------------------------------------------- | --------------------------------------------------------------- |
-| [Claude Code](https://claude.ai/code)             | My entire engineering team. Wrote every line of code.           |
-| [Claude Haiku](https://anthropic.com)             | "Lumo's take" — a one-line read on every incoming message       |
-| [Anthropic API](https://console.anthropic.com)    | Powers the in-app AI features                                   |
+### Tools & APIs
 
-### Payments & Blockchain
+| Tool                                              | Used for                                              |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| [Claude Code](https://claude.ai/code)             | My entire engineering team. Wrote every line of code. |
+| [Claude Haiku](https://anthropic.com)             | "Lumo's take" — one-line read on each message         |
+| [Vercel](https://vercel.com)                      | Hosting + serverless functions + custom domain        |
+| [Upstash Redis](https://upstash.com)              | Creator profiles + messages                           |
+| [Resend](https://resend.com)                      | Email forwarding (`Lumo let someone in`)              |
+| [Anthropic API](https://console.anthropic.com)    | Claude Haiku for in-app screening                     |
+| [x402](https://x402.org) (`main`)                 | HTTP 402 micropayments on Base                        |
+| [Coinbase Developer Platform](https://portal.cdp.coinbase.com) (`main`) | Embedded wallets + facilitator    |
+| [BaseScan](https://sepolia.basescan.org) (`main`) | On-chain transaction explorer                         |
+| [mppx](https://mpp.dev) (`tempo`)                 | HTTP 402 inline payments on Tempo                     |
+| [Tempo Wallet](https://wallet.tempo.xyz) (`tempo`) | Passkey-secured embedded wallet                      |
+| [wagmi 3.6 / `wagmi/tempo`](https://wagmi.sh) (`tempo`) | React hooks + first-class Tempo connector       |
+| [Tempo Explorer](https://explore.testnet.tempo.xyz) (`tempo`) | On-chain transaction explorer             |
 
-| Tool                                                            | What I used it for                                                                |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [Machine Payments Protocol (mppx)](https://mpp.dev)             | HTTP 402 inline micropayments — sub-cent stablecoin payments                      |
-| [Tempo testnet (Moderato)](https://docs.tempo.xyz)              | Payments-focused L1 by Stripe + Paradigm; ~500ms finality, no native gas token    |
-| [Tempo Wallet](https://wallet.tempo.xyz)                        | Passkey-secured embedded wallet (via the `accounts` SDK + wagmi connector)        |
-| [wagmi 3.6 + wagmi/tempo](https://wagmi.sh)                     | React hooks + first-class Tempo connector                                         |
-| [viem 2.48](https://viem.sh)                                    | Signing, transports, EIP-712 typed data                                           |
-| [Tempo Explorer](https://explore.testnet.tempo.xyz)             | On-chain transaction explorer                                                     |
+### Frontend (both branches)
 
-### Infrastructure
-
-| Tool                                       | What I used it for                                          |
-| ------------------------------------------ | ----------------------------------------------------------- |
-| [Vercel](https://vercel.com)               | Hosting + serverless API functions + custom domain          |
-| [Upstash Redis](https://upstash.com)       | Database — creator profiles + messages, `tempo:` namespaced |
-| [Resend](https://resend.com)               | Email forwarding — "Lumo let someone in" emails             |
-
-### Frontend
-
-| Tool                                            | What I used it for                          |
-| ----------------------------------------------- | ------------------------------------------- |
-| [Vite 7](https://vitejs.dev)                    | Build tool, dev server, custom api plugin   |
-| [React 19](https://react.dev)                   | UI framework                                |
-| [TypeScript](https://typescriptlang.org)        | Type safety                                 |
-| Vanilla CSS + custom properties                 | Styling — no Tailwind; design tokens in `index.css` |
-| [react-router-dom](https://reactrouter.com)     | Page routing                                |
-| [qrcode.react](https://npmjs.com/package/qrcode.react) | QR code on the dashboard                |
-
-### Design
-
-| Tool                                                                           | What I used it for                                       |
-| ------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| [Inter Tight](https://fonts.google.com/specimen/Inter+Tight)                   | Typography                                               |
-| Pinterest                                                                      | Mood board — gradient orbs, glassmorphism, soft palettes |
-
-### Accounts & services created
-
-| Service               | Purpose                                            |
-| --------------------- | -------------------------------------------------- |
-| Tempo Wallet          | Passkey-secured user wallets                       |
-| Upstash               | Redis database (free tier, shared with pay2text)   |
-| Resend                | Transactional email (free tier — 3,000/month)      |
-| Anthropic             | API access for Claude Haiku                        |
-| Vercel                | Deployment + domain (`tempo.pay2text.xyz`)         |
-
----
-
-## How I built this (without writing code)
-
-I'm a Chief of Staff at Mastercard. I am not a developer.
-
-I built Lumo as a solo non-technical PM using Claude Code as my
-engineering partner. I wrote the PRD, made every product decision,
-handled all external account setup, debugged by reading logs and
-screenshots, and directed the build phase by phase.
-
-Claude Code wrote the code.
-
-The original Base/CDP build took approximately 8 hours during a
-hackathon. The Tempo migration — a fresh codebase fork, three layer
-swaps (chain, payments, auth), parallel deploy — took about half a day
-on top of that.
-
-What I learned: the bottleneck in building is no longer technical
-skill. It's clarity of thought. The clearer your vision, the better
-the output.
+Vite 7 + React 19 + TypeScript + react-router-dom + qrcode.react.
+Vanilla CSS with custom-property design tokens — no Tailwind. Inter Tight
+typography.
 
 ---
 
@@ -208,113 +167,89 @@ the output.
 /
 ├── src/
 │   ├── intents.ts            # Single source of truth — labels + prices
-│   ├── chain.ts              # Tempo testnet chain config (id, RPC, explorer, pathUSD)
-│   ├── wagmi.ts              # Wagmi config — single chain + tempoWallet connector
-│   ├── App.tsx               # Root — just renders <Outlet/>
-│   ├── main.tsx              # Provider stack: Wagmi → QueryClient → Router
+│   ├── App.tsx               # Root — auth state + routing
+│   ├── main.tsx              # Provider stack
 │   ├── pages/
-│   │   ├── HomePage.tsx      # "Hi. I'm Lumo." + Connect button
-│   │   ├── OnboardPage.tsx   # Handle picker + email (required)
+│   │   ├── HomePage.tsx      # "Hi. I'm Lumo." + sign in
+│   │   ├── OnboardPage.tsx   # Handle picker + email
 │   │   ├── DashboardPage.tsx # Creator inbox + share link + QR + send tab
 │   │   ├── HandlePage.tsx    # /:handle — the public paying page
 │   │   ├── AgentPage.tsx     # /agent — autonomous Claude sender demo
 │   │   └── NotFoundPage.tsx
 │   ├── components/
-│   │   ├── ConnectButton.tsx # Tempo Wallet sign in / out
-│   │   ├── SendFlow.tsx      # Pick intent → compose → mppx pay → sent
+│   │   ├── SendFlow.tsx      # Pick intent → compose → 402 pay → sent
 │   │   └── Lumo.tsx          # The glowing orb (CSS)
-│   └── hooks/
-│       ├── useCreatorProfile.ts   # /api/creators ?walletAddress
-│       ├── useCreatorByHandle.ts  # /api/creators ?handle
-│       └── useMessages.ts         # /api/messages ?handle
+│   └── hooks/                # useCreatorProfile, useCreatorByHandle, useMessages
 ├── api/
 │   ├── creators.ts           # GET/POST/PATCH creator profiles
-│   ├── messages.ts           # GET inbox / POST = mppx-charge + save + email
-│   ├── agent/run.ts          # /agent endpoint — Claude picks intent + pays
-│   └── _lib/
-│       ├── mppx.ts           # Server Mppx instance — tempo.charge handler
-│       ├── web-handler.ts    # Node↔Web Request adapter (Vercel runtime)
-│       ├── redis.ts          # Upstash + tempo: namespaced key helpers
-│       ├── email.ts          # Resend forwarding
-│       └── lumo-take.ts      # Claude Haiku one-liner
-├── vite.config.ts            # Inline plugin serves api/* in `npm run dev`
+│   ├── messages.ts           # GET inbox / POST = 402 challenge + verify + save + email
+│   ├── agent/run.ts          # /agent — Claude picks an intent and pays
+│   └── _lib/                 # redis, email, lumo-take, plus chain-specific glue
 └── vercel.json               # SPA rewrite — everything non-/api → index.html
 ```
+
+Files unique to the **`tempo`** branch:
+- `src/wagmi.ts` — Wagmi config, single Tempo chain + tempoWallet connector
+- `src/chain.ts` — Tempo testnet chain object (id, RPC, explorer, pathUSD)
+- `src/components/ConnectButton.tsx` — Tempo Wallet sign in / out
+- `api/_lib/mppx.ts` — Server `Mppx.create({ tempo.charge })` instance
+- `api/_lib/web-handler.ts` — Node↔Web Request adapter for Vercel runtime
+- `vite.config.ts` dev plugin that mounts `api/*` as middleware locally
+
+Files unique to the **`main`** branch:
+- `src/config.ts` — CDP configuration
+- `src/theme.ts` — CDP theme overrides
 
 ---
 
 ## Getting started
 
-### Prerequisites
-
-- Node.js 22+
-- A [Tempo Wallet](https://wallet.tempo.xyz) for testing (passkey)
-- An [Upstash](https://upstash.com) Redis database
-- An [Anthropic](https://console.anthropic.com) API key (optional — Lumo's take falls back gracefully)
-- A [Resend](https://resend.com) account (optional — for email forwarding)
-- The Vercel CLI (only needed for deploying)
-
-### Setup
-
 ```bash
 git clone https://github.com/mluisag/pay2text
-cd lumo-tempo
+cd pay2text
+git checkout main    # or: git checkout tempo
 npm install
 cp env.example .env.local   # then edit
 ```
 
-Fill in `.env.local`:
+### `main` branch (Base) — env vars
 
-```
-# mppx (required)
-MPP_SECRET_KEY=        # openssl rand -hex 32
-MPPX_PRIVATE_KEY=      # server fee-payer; fund with pathUSD at wallet.tempo.xyz
-
-# Upstash (required)
-KV_REST_API_URL=
-KV_REST_API_TOKEN=
-
-# Optional
-ANTHROPIC_API_KEY=
-RESEND_API_KEY=
-AGENT_WALLET_PRIVATE_KEY=    # only if you want /agent to work
-```
+| Variable                                  | Where to get it                  | Required |
+| ----------------------------------------- | -------------------------------- | -------- |
+| `VITE_CDP_PROJECT_ID`                     | portal.cdp.coinbase.com          | ✅       |
+| `VITE_CDP_CREATE_ETHEREUM_ACCOUNT_TYPE`   | set to `eoa`                     | ✅       |
+| `VITE_CDP_CREATE_SOLANA_ACCOUNT`          | set to `false`                   | ✅       |
+| `KV_REST_API_URL` + `KV_REST_API_TOKEN`   | Upstash dashboard                | ✅       |
+| `ANTHROPIC_API_KEY`                       | console.anthropic.com            | optional |
+| `RESEND_API_KEY`                          | resend.com/api-keys              | optional |
+| `AGENT_WALLET_PRIVATE_KEY`                | Fresh wallet, funded with USDC   | optional |
 
 ```bash
-npm run dev -- --port 5174
-open http://localhost:5174
+vercel dev   # Vercel CLI is required to serve /api/* alongside Vite
 ```
 
-The Vite dev server has a custom plugin (`vite.config.ts`) that mounts
-each `api/*.ts` file as middleware, so `fetch('/api/...')` works locally
-the same way it does on Vercel — no `vercel dev` needed.
+### `tempo` branch (Tempo) — env vars
 
-### Deploy
+| Variable                                  | Where to get it                                | Required |
+| ----------------------------------------- | ---------------------------------------------- | -------- |
+| `MPP_SECRET_KEY`                          | `openssl rand -hex 32`                         | ✅       |
+| `MPPX_PRIVATE_KEY`                        | Fresh wallet, funded at `wallet.tempo.xyz`     | ✅       |
+| `KV_REST_API_URL` + `KV_REST_API_TOKEN`   | Upstash dashboard                              | ✅       |
+| `ANTHROPIC_API_KEY`                       | console.anthropic.com                          | optional |
+| `RESEND_API_KEY`                          | resend.com/api-keys                            | optional |
+| `AGENT_WALLET_PRIVATE_KEY`                | Fresh wallet, funded with pathUSD              | optional |
 
 ```bash
-npx vercel link --yes --project lumo-tempo
-npx vercel env add MPP_SECRET_KEY production
-npx vercel env add MPPX_PRIVATE_KEY production
-npx vercel env add KV_REST_API_URL production
-npx vercel env add KV_REST_API_TOKEN production
-npx vercel env add ANTHROPIC_API_KEY production    # optional
-npx vercel env add RESEND_API_KEY production       # optional
+npm run dev -- --port 5174   # Vite dev plugin serves /api/* — no vercel dev needed
+```
+
+### Deploy (either branch)
+
+```bash
+npx vercel link --yes
+# add env vars with: npx vercel env add NAME production
 npx vercel deploy --prod --yes
 ```
-
----
-
-## Environment variables
-
-| Variable                   | Where to get it                                   | Required |
-| -------------------------- | ------------------------------------------------- | -------- |
-| `MPP_SECRET_KEY`           | `openssl rand -hex 32`                            | ✅       |
-| `MPPX_PRIVATE_KEY`         | Fresh wallet, funded at `wallet.tempo.xyz`        | ✅       |
-| `KV_REST_API_URL`          | Upstash dashboard                                 | ✅       |
-| `KV_REST_API_TOKEN`        | Upstash dashboard                                 | ✅       |
-| `ANTHROPIC_API_KEY`        | console.anthropic.com                             | optional |
-| `RESEND_API_KEY`           | resend.com/api-keys                               | optional |
-| `AGENT_WALLET_PRIVATE_KEY` | Fresh wallet, funded at `wallet.tempo.xyz`        | optional |
 
 ---
 
@@ -335,18 +270,39 @@ that. The toll is how we find out who actually does."*
 
 ---
 
+## How I built this (without writing code)
+
+I'm a Chief of Staff at Mastercard. I am not a developer.
+
+I built Lumo as a solo non-technical PM using Claude Code as my
+engineering partner. I wrote the PRD, made every product decision,
+handled all external account setup, debugged by reading logs and
+screenshots, and directed the build phase by phase.
+
+Claude Code wrote the code.
+
+The original Base build took approximately 8 hours during a hackathon.
+The Tempo migration — fork, swap chain layer, swap payments layer,
+swap auth layer, parallel deploy — took about half a day on top of that.
+
+What I learned: the bottleneck in building is no longer technical
+skill. It's clarity of thought. The clearer your vision, the better
+the output.
+
+---
+
 ## Roadmap
 
 **V1.5**
+- [x] Reply-to field on sender flow
+- [x] Categorized inbox dashboard
 - [ ] Custom domain email (`lumo@pay2text.xyz`)
-- [ ] Reply-to field on sender flow ✓ (already shipped)
-- [ ] Categorized inbox dashboard ✓ (already shipped)
 
 **V2**
 - [ ] Customizable intent menus per creator
 - [ ] Role-based packs (VCs, founders, journalists, creators)
 - [ ] Calendly integration on premium intents
-- [ ] On-ramp from card → pathUSD for non-crypto senders
+- [ ] On-ramp from card → stablecoin for non-crypto senders
 - [ ] Cross-chain pay (Tempo creator can receive Base USDC, vice versa)
 
 **V3**
@@ -359,11 +315,11 @@ that. The toll is how we find out who actually does."*
 
 ## Built at
 
-The original `pay2text.xyz` was built at the **x402 + CDP Hackathon —
+The original `main` build was built at the **x402 + CDP Hackathon —
 April 2026** (Base + Coinbase Developer Platform + x402).
 
-This Tempo build is a follow-up experiment: same product, different
-rails, parallel deploy. Built with Claude Code over half a day.
+The `tempo` branch is a follow-up experiment: same product, different
+rails, parallel deploy.
 
 Built by [Laluy Garduno](https://www.linkedin.com/in/laluy/) —
 Chief of Staff at Mastercard, non-technical PM, first-time builder.
