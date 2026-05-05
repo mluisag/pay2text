@@ -327,4 +327,5 @@ Powered by [Claude Code](https://claude.ai/code).
 ---
 
 ## Demo
+<img width="1861" height="1329" alt="image" src="https://github.com/user-attachments/assets/11fae673-27aa-4491-8aee-b6c6aa5d56f1" />
 
