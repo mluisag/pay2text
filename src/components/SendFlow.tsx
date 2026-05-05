@@ -1,5 +1,6 @@
 import { Mppx, tempo } from "mppx/client"
 import { useMemo, useState } from "react"
+import { toAccount } from "viem/accounts"
 import { useAccount, useDisconnect, useWalletClient } from "wagmi"
 
 import { explorerTxUrl } from "../chain"
@@ -34,8 +35,31 @@ function SendFlow({ handle, compact = false, onSent }: Props) {
 
   const fetchWithPayment = useMemo(() => {
     if (!walletClient?.account) return null
+
+    // Wrap the wagmi-backed walletClient as a viem Account whose signing
+    // methods route through the connector (Tempo Wallet dialog). Without
+    // this, mppx builds its own client with the chain's default HTTP RPC
+    // transport and tries to sign via eth_signTypedData_v4 over RPC —
+    // which fails because RPC nodes don't sign.
+    const account = toAccount({
+      address: walletClient.account.address,
+      async signMessage({ message }) {
+        return walletClient.signMessage({ message })
+      },
+      async signTransaction(transaction) {
+        return walletClient.signTransaction(
+          transaction as Parameters<typeof walletClient.signTransaction>[0],
+        )
+      },
+      async signTypedData(typedData) {
+        return walletClient.signTypedData(
+          typedData as Parameters<typeof walletClient.signTypedData>[0],
+        )
+      },
+    })
+
     const mppx = Mppx.create({
-      methods: [tempo({ account: walletClient.account })],
+      methods: [tempo({ account })],
       polyfill: false,
     })
     return mppx.fetch
