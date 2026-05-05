@@ -4,7 +4,12 @@ const HANDLE_REGEX = /^[a-z0-9]{3,32}$/
 
 export default async function handler(request: Request): Promise<Response> {
   try {
-    const url = new URL(request.url)
+    // request.url is relative on Vercel ('/api/...?...') and absolute in
+    // the local dev plugin. Provide a base so URL() handles both shapes.
+    const url = new URL(
+      request.url,
+      `http://${request.headers.get('host') ?? 'localhost'}`,
+    )
 
     if (request.method === 'GET') {
       const handle = url.searchParams.get('handle')

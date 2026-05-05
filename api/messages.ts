@@ -22,7 +22,9 @@ type StoredMessage = {
 }
 
 export default async function handler(request: Request): Promise<Response> {
-  const url = new URL(request.url)
+  // request.url is relative on Vercel; absolute via the local dev plugin.
+  const baseUrl = `http://${request.headers.get('host') ?? 'localhost'}`
+  const url = new URL(request.url, baseUrl)
 
   if (request.method === 'GET') {
     try {
@@ -81,9 +83,10 @@ export default async function handler(request: Request): Promise<Response> {
     const intent = INTENTS.find((i) => i.id === intentId)
     if (!intent) return Response.json({ error: 'invalid_intent' }, { status: 400 })
 
-    // Reconstruct a Request for mppx (mppx may consume body internally; safer
-    // to give it a fresh one with the bytes we already buffered).
-    const mppxRequest = new Request(request.url, {
+    // Reconstruct a Request for mppx with an absolute URL — Vercel passes
+    // request.url as a relative path, and mppx (which builds challenges
+    // using URL parsing internally) needs absolute.
+    const mppxRequest = new Request(new URL(request.url, baseUrl), {
       method: request.method,
       headers: request.headers,
       body: bodyText,
