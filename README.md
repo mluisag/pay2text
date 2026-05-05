@@ -320,7 +320,7 @@ The `tempo` branch is a follow-up experiment: same product, different
 rails, parallel deploy.
 
 Built by [Laluy Garduno](https://www.linkedin.com/in/laluy/) —
-Chief of Staff at Mastercard, non-technical PM, first-time builder.
+Program Manager, Blockchain & Digital Assets, Mastercard, non-technical PM, first-time builder.
 
 Powered by [Claude Code](https://claude.ai/code).
 
