@@ -365,7 +365,7 @@ April 2026** (Base + Coinbase Developer Platform + x402).
 This Tempo build is a follow-up experiment: same product, different
 rails, parallel deploy. Built with Claude Code over half a day.
 
-Built by [Laluy Garduno](https://www.linkedin.com/) —
+Built by [Laluy Garduno](https://www.linkedin.com/in/laluy/) —
 Chief of Staff at Mastercard, non-technical PM, first-time builder.
 
 Powered by [Claude Code](https://claude.ai/code).
