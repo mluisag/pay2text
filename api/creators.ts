@@ -1,15 +1,11 @@
 import { keys, redis, type Creator } from './_lib/redis.js'
+import { wrap } from './_lib/web-handler.js'
 
 const HANDLE_REGEX = /^[a-z0-9]{3,32}$/
 
-export default async function handler(request: Request): Promise<Response> {
+export async function handle(request: Request): Promise<Response> {
   try {
-    // request.url is relative on Vercel ('/api/...?...') and absolute in
-    // the local dev plugin. Provide a base so URL() handles both shapes.
-    const url = new URL(
-      request.url,
-      `http://${request.headers.get('host') ?? 'localhost'}`,
-    )
+    const url = new URL(request.url)
 
     if (request.method === 'GET') {
       const handle = url.searchParams.get('handle')
@@ -107,3 +103,5 @@ export default async function handler(request: Request): Promise<Response> {
     return Response.json({ error: 'server_error' }, { status: 500 })
   }
 }
+
+export default wrap(handle)

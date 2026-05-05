@@ -3,6 +3,7 @@ import { Mppx, tempo } from 'mppx/client'
 import { privateKeyToAccount } from 'viem/accounts'
 
 import { keys, redis, type Creator } from '../_lib/redis.js'
+import { wrap } from '../_lib/web-handler.js'
 import { INTENTS } from '../../src/intents.js'
 
 type AgentStep = {
@@ -11,7 +12,7 @@ type AgentStep = {
   state: 'thinking' | 'done' | 'error'
 }
 
-export default async function handler(request: Request): Promise<Response> {
+export async function handle(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
       status: 405,
@@ -199,3 +200,5 @@ Respond ONLY with valid JSON, no prose, no code fences. Format:
 function shorten(addr: string): string {
   return addr.length > 14 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr
 }
+
+export default wrap(handle)

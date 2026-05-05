@@ -4,6 +4,7 @@ import { keys, redis, type Creator } from './_lib/redis.js'
 import { sendMessageEmail } from './_lib/email.js'
 import { generateLumoTake } from './_lib/lumo-take.js'
 import { mppx } from './_lib/mppx.js'
+import { wrap } from './_lib/web-handler.js'
 import { INTENTS } from '../src/intents.js'
 
 type StoredMessage = {
@@ -21,10 +22,8 @@ type StoredMessage = {
   timestamp: string
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  // request.url is relative on Vercel; absolute via the local dev plugin.
-  const baseUrl = `http://${request.headers.get('host') ?? 'localhost'}`
-  const url = new URL(request.url, baseUrl)
+export async function handle(request: Request): Promise<Response> {
+  const url = new URL(request.url)
 
   if (request.method === 'GET') {
     try {
@@ -83,10 +82,9 @@ export default async function handler(request: Request): Promise<Response> {
     const intent = INTENTS.find((i) => i.id === intentId)
     if (!intent) return Response.json({ error: 'invalid_intent' }, { status: 400 })
 
-    // Reconstruct a Request for mppx with an absolute URL — Vercel passes
-    // request.url as a relative path, and mppx (which builds challenges
-    // using URL parsing internally) needs absolute.
-    const mppxRequest = new Request(new URL(request.url, baseUrl), {
+    // Reconstruct a Request for mppx (mppx may consume the body internally;
+    // safer to give it a fresh one with the bytes we already buffered).
+    const mppxRequest = new Request(request.url, {
       method: request.method,
       headers: request.headers,
       body: bodyText,
@@ -191,3 +189,5 @@ export default async function handler(request: Request): Promise<Response> {
     return Response.json({ error: 'server_error' }, { status: 500 })
   }
 }
+
+export default wrap(handle)

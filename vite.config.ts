@@ -11,11 +11,14 @@ dotenv.config({ path: resolve(process.cwd(), ".env") })
 
 /**
  * Routes that exist as Vercel-style files under api/. In production Vercel
- * mounts each as a serverless function; in `vite dev` we mount them as
- * middleware here so the same fetch('/api/...') calls work locally.
+ * mounts each as a serverless function (Node IncomingMessage/ServerResponse
+ * signature). In `vite dev` we mount them as middleware here.
  *
- * All handlers must use the Web Request → Response signature (not the
- * legacy `(req, res) => ...` Vercel shape) — the plugin doesn't adapt.
+ * Each api file exports both:
+ *   - `handle(request: Request): Promise<Response>`  (the real logic)
+ *   - `default = wrap(handle)` (Node-style adapter for Vercel)
+ *
+ * The dev plugin imports the named `handle` export and skips the wrapper.
  */
 const API_ROUTES: Record<string, string> = {
   "/api/creators": "/api/creators.ts",
@@ -35,7 +38,7 @@ function devApiPlugin(): Plugin {
 
         try {
           const mod = await server.ssrLoadModule(handlerPath)
-          const handler = mod.default as (request: Request) => Promise<Response>
+          const handler = mod.handle as (request: Request) => Promise<Response>
           if (typeof handler !== "function") return next()
 
           // Buffer the request body (Web Request needs it as bytes).
