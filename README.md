@@ -257,7 +257,7 @@ the output.
 ### Setup
 
 ```bash
-git clone <this repo>
+git clone https://github.com/mluisag/pay2text
 cd lumo-tempo
 npm install
 cp env.example .env.local   # then edit
