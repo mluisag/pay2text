@@ -21,8 +21,8 @@ Cold DMs are free. That's the problem.
 Stripe charges a minimum of 30 cents per transaction — making true
 micropayments economically impossible. Stablecoin-native chains and the
 HTTP 402 payment standard change that. Lumo charges a tenth of a cent
-to say hi, and ten dollars to say *I love you*. Every price in between
-is a reason to reach out.
+to ask for a warm intro, and ten dollars to propose a strategic
+partnership. Every price in between is a reason to reach out.
 
 The price isn't the point. The price is the filter.
 
@@ -50,13 +50,13 @@ The price isn't the point. The price is the filter.
 
 ## Intent menu
 
-| Intent             | Price |
-| ------------------ | ----- |
-| just saying hi     | 0.1¢  |
-| got a minute?      | 1¢    |
-| have an idea       | 10¢   |
-| kind of important  | $1    |
-| I love you         | $10   |
+| Intent                       | Price |
+| ---------------------------- | ----- |
+| Request warm intro           | 0.1¢  |
+| Deck review                  | 1¢    |
+| Fund raising advice          | 10¢   |
+| Initial discovery. 15 min    | $1    |
+| Strategic partnership        | $10   |
 
 Prices live in one file — `src/intents.ts` — and nowhere else.
 The displayed price and the on-chain charge amount always match.
